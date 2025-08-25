@@ -1,0 +1,4 @@
+8.23
+14：30——修改了auth_service.py的注册逻辑
+8.24
+14：22——https://schizinfo.com/connexion/：开片设计模式

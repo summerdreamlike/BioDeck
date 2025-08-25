@@ -1,0 +1,6 @@
+{
+  "devDependencies": {
+    "@types/node": "^22.14.1",
+    "@vue/tsconfig": "^0.7.0"
+  }
+}

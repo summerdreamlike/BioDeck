@@ -1,0 +1,10 @@
+{
+  "devDependencies": {
+    "@vue/tsconfig": "^0.7.0"
+  },
+  "dependencies": {
+    "@types/uuid": "^10.0.0",
+    "axios": "^1.8.4",
+    "uuid": "^11.1.0"
+  }
+}

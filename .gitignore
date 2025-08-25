@@ -1,0 +1,56 @@
+# ----- OS / Editors -----
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# ----- Logs -----
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ----- Node / Frontend (Vue CLI) -----
+node_modules/
+dist/
+*.local
+
+# Project frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+frontend/.env.*.local
+
+# ----- Build caches -----
+.cache/
+.eslintcache
+
+# ----- Python / Backend -----
+backend/__pycache__/
+backend/**/*.pyc
+backend/.pytest_cache/
+backend/.mypy_cache/
+backend/.coverage
+backend/coverage/
+backend/.cache/
+backend/.venv/
+backend/venv/
+backend/.env
+
+# DB / uploads
+backend/database.db
+backend/*.sqlite3
+backend/uploads/
+backend/static/uploads/
+
+# ----- Misc large/binary -----
+*.zip
+*.rar
+*.7z
+*.tar
+*.tar.gz
+
+# If using VSCode settings per folder (keep if needed)
+# !.vscode/settings.json
