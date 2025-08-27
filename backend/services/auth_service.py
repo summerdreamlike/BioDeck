@@ -237,16 +237,24 @@ class AuthService:
         if not user:
             return None
         
+        # 将 SQLite Row 对象转换为字典
+        if hasattr(user, 'keys'):
+            user_dict = dict(user)
+        else:
+            user_dict = user
+        
         user_info = {
-            'id': user['id'],
-            'name': user['name'],
-            'role': user['role']
+            'id': user_dict['id'],
+            'name': user_dict['name'],
+            'role': user_dict['role']
         }
         
-        if user['role'] == 'student':
-            user_info['student_id'] = user['student_id']
-            user_info['class_number'] = user['class_number']
+        if user_dict['role'] == 'student':
+            user_info['student_id'] = user_dict['student_id']
+            user_info['class_number'] = user_dict.get('class_number')
         else:
-            user_info['teacher_id'] = user['teacher_id']
+            user_info['teacher_id'] = user_dict['teacher_id']
+            # 教师也应该有班级信息
+            user_info['class_number'] = user_dict.get('class_number')
         
         return user_info 

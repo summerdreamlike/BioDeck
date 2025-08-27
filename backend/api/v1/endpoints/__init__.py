@@ -14,3 +14,5 @@ from . import messages
 from . import attendance
 from . import tasks
 from . import feedbacks 
+from . import user_profile
+from . import ai

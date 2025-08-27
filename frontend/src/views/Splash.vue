@@ -1,14 +1,15 @@
 <template>
   <section class="splash" :class="{ leaving: exiting }" role="region" aria-label="启动页">
-    <div class="brand">
+    <div class="brand" :class="{ shifted: shiftLeft }">
       <div class="logo-wrap">
         <div class="pulse"></div>
-        <div class="logo">
-          <span class="glyph">生</span>
-          <span class="ring" aria-hidden="true"></span>
-        </div>
+        <img :src="logo2" alt="Logo" class="logo-img" />
       </div>
-      <h1 class="title">卡生卡物</h1>
+      <div class="brand-text" :class="{ show: showTitle }">
+        <!-- <h1 class="title">卡生卡物</h1>
+        <p class="tagline">Build Your Knowledge Deck</p> -->
+        <img :src="logo1" alt="Logo" class="title" />
+      </div>
     </div>
     <p class="subtitle">正在加载，请稍候<span class="dots"><span>.</span><span>.</span><span>.</span></span></p>
   </section>
@@ -17,19 +18,28 @@
 <script setup>
 import { onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import logo2 from '../assets/img/Logo2.png'
+import logo1 from '../assets/img/Logo1.png'
 
 const router = useRouter()
 let timer
 let navTimer
 const exiting = ref(false)
+const showTitle = ref(false)
+const shiftLeft = ref(false)
 
 onMounted(() => {
-  // 短暂展示后进入主应用
+  // 1) 先显示图片，稍后推动到左侧并展示标题
   timer = setTimeout(() => {
-    exiting.value = true
-    // 等待退出动画完成再跳转
-    navTimer = setTimeout(() => router.push('/Login'), 600)
-  }, 1000)
+    shiftLeft.value = true
+    showTitle.value = true
+    // 2) 再等待一段时间后退出到登录页
+    navTimer = setTimeout(() => {
+      exiting.value = true
+      setTimeout(() => router.push('/Login'), 500)
+    }, 
+    900)
+  }, 900)
 })
 
 onUnmounted(() => {
@@ -59,57 +69,48 @@ onUnmounted(() => {
 .splash.leaving { transform: translateY(-20vh); opacity: 0; }
 
 .brand { display: flex; align-items: center; gap: 16px; margin-bottom: 8px; }
+.brand { transition: transform .6s ease, opacity .6s ease; justify-content: center; flex-wrap: nowrap; }
+.brand.shifted { transform: translateX(-40px); justify-content: flex-start; }
 
 .logo-wrap {
   position: relative;
-  width: 120px;
-  height: 120px;
+  width: 160px;
+  height: 160px;
   margin-bottom: 16px;
 }
 
 .pulse {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(16,185,129,0.18), rgba(16,185,129,0.04) 60%, transparent 70%);
-  animation: ripple 2s infinite ease-out;
+  display: none;
 }
 
-.logo {
-  position: relative;
-  z-index: 1;
-  width: 120px;
-  height: 120px;
-  border-radius: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #10b981, #34d399);
-  color: #ffffff;
-  font-size: 64px;
-  font-weight: 800;
-  box-shadow: 0 16px 32px rgba(16, 185, 129, 0.25);
-  transform: translateZ(0);
-  overflow: hidden;
+.logo-img { 
+  position: relative; 
+  z-index: 1; 
+  width: 100%; 
+  height: 100%; 
+  border-radius: 16px; 
+  object-fit: contain; 
+  box-shadow: none; 
 }
 
-.logo .glyph { position: relative; z-index: 2; }
+.brand-text { display: flex; flex-direction: column; opacity: 0; transform: translateX(12px); transition: opacity .8s ease, transform .8s ease, max-width .8s ease, margin-left .8s ease; max-width: 0; overflow: hidden; margin-left: 0; white-space: nowrap; }
+.brand-text.show { opacity: 1; transform: translateX(0); max-width: 300px; margin-left: 12px; }
 
-.logo .ring {
-  position: absolute;
-  width: 160px;
-  height: 160px;
-  border-radius: 50%;
-  border: 4px solid rgba(255,255,255,0.25);
-  box-shadow: 0 0 20px rgba(255,255,255,0.2) inset;
-  animation: spin 3.2s linear infinite;
-}
-
-.title {
-  font-size: 40px;
-  font-weight: 700;
+/* .title {
+  font-size: 48px;
+  font-weight: 300;
   margin: 0;
+  white-space: nowrap;
+} */
+.title {
+  position: relative;
+  width: 100%; 
+  height: 50%;
+  margin: 0;
+  object-fit: contain;
+  white-space: nowrap;
 }
+.tagline { margin: 4px 0 0; font-size: 14px; color: #047857; opacity: .6; }
 
 .subtitle {
   font-size: 14px;
@@ -138,6 +139,11 @@ onUnmounted(() => {
   .pulse { animation: none; }
   .logo .ring { animation: none; }
   .dots span { animation: none; opacity: 1; }
+}
+
+@media (min-width: 768px) {
+  .logo-wrap { width: 200px; height: 200px; }
+  .title { font-size: 56px; }
 }
 </style>
 

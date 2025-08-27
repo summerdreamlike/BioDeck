@@ -102,3 +102,14 @@ export const attendanceApi = {
   createAttendance: (data) => api.post('/attendance', data),
   exportAttendance: (format = 'csv') => api.get(`/attendance/export?format=${format}`)
 } 
+
+
+// 班级学生管理 API
+export const classStudentsApi = {
+  // 根据班级获取学生列表
+  getStudentsByClass: (classId) => api.get(`/students?class_id=${classId}`),
+  // 获取学生作业完成情况
+  getStudentTaskStats: (studentId) => api.get(`/study/data/${studentId}`),
+  // 获取任务统计信息
+  getTaskStatistics: (params) => api.get('/tasks/statistics', { params })
+}

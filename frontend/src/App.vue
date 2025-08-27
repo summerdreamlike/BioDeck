@@ -1,10 +1,12 @@
 <template>
   <div class="view-wrap" :class="[transitionName, { 'is-transitioning': isTransitioning }]">
-    <transition :name="transitionName" mode="out-in"
-      @before-enter="onBefore" @after-enter="onAfter"
-      @before-leave="onBefore" @after-leave="onAfter">
-      <router-view />
-    </transition>
+    <router-view v-slot="{ Component }">
+      <transition :name="transitionName" mode="out-in"
+        @before-enter="onBefore" @after-enter="onAfter"
+        @before-leave="onBefore" @after-leave="onAfter">
+        <component :is="Component" />
+      </transition>
+    </router-view>
     <div class="overlay" aria-hidden="true"></div>
   </div>
   

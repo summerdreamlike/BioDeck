@@ -9,7 +9,7 @@
           <h2 class="head-title">欢迎登录</h2>
         </div>
       </div>
-      <el-form :model="form" :rules="rules" ref="formRef" label-width="90px" class="form">
+      <el-form :model="form" :rules="rules" ref="formRef" label-width="90px" class="form" @submit.prevent="onSubmit">
         <!-- 仅注册时需要角色选择 -->
         <el-form-item v-if="mode==='register'" label="角色" prop="role">
           <div class="role-toggle">
@@ -65,7 +65,7 @@
         </el-form-item>
 
         <el-form-item class="actions" label-width="0">
-          <el-button :class="['submit','primary-btn', status]" type="primary" @click="onSubmit">
+          <el-button :class="['submit','primary-btn', status]" type="primary" native-type="submit">
             <transition name="scaleFade" mode="out-in">
               <span v-if="status==='idle'" key="idle">{{ mode==='login' ? '登录' : '注册' }}</span>
               <span v-else-if="status==='loading'" key="loading" class="spinner" aria-live="polite" aria-busy="true">
@@ -99,6 +99,7 @@ import { useUserStore } from '../store'
 const router = useRouter()
 const userStore = useUserStore()
 const mode = ref('login')
+const exiting = ref(false)
 const status = ref('idle') // idle | loading | success | error
 const formRef = ref()
 const form = reactive({ role: 'student', username: '', password: '', identifier: '' })
@@ -119,6 +120,8 @@ function toggleMode() {
 }
 
 async function onSubmit() {
+  // 防重复提交
+  if (status.value !== 'idle') return
   try {
     await formRef.value.validate()
   } catch {
@@ -152,7 +155,17 @@ async function onSubmit() {
     } else {
       // 登录逻辑：支持姓名/学号+密码
       const usernameLower = form.username.trim().toLowerCase()
-      const tryRoles = usernameLower === 'admin' ? ['admin'] : ['teacher','student']
+      const isDigits = /^\d+$/.test(usernameLower)
+      let tryRoles
+      if (usernameLower === 'admin') {
+        tryRoles = ['admin']
+      } else if (isDigits && usernameLower.startsWith('1001')) {
+        tryRoles = ['student']
+      } else if (isDigits && usernameLower.startsWith('2001')) {
+        tryRoles = ['teacher']
+      } else {
+        tryRoles = ['student','teacher']
+      }
       let ok = false, lastErr
       
       for (const role of tryRoles) {
@@ -171,7 +184,7 @@ async function onSubmit() {
           
           status.value = 'success'
           ElMessage.success('登录成功，正在跳转...')
-          setTimeout(() => redirectByRole(data.user.role), 500)
+          setTimeout(() => redirectByRole(data.user.role), 420)
           ok = true
           break
         } catch (e) { 
@@ -224,7 +237,7 @@ async function onSubmit() {
 }
 
 function redirectByRole(role, replace = false) {
-  if (role === 'student') return replace ? router.replace({ name: 'Classroom' }) : router.push({ name: 'Classroom' })
+  if (role === 'student') return replace ? router.replace('/StudentSide/Home') : router.push('/StudentSide/Home')
   if (role === 'teacher') return replace ? router.replace({ name: 'Dashboard' }) : router.push({ name: 'Dashboard' })
   if (role === 'admin')   return replace ? router.replace({ name: 'Dashboard' }) : router.push({ name: 'Dashboard' })
 }
@@ -281,6 +294,7 @@ function redirectByRole(role, replace = false) {
 @keyframes tgs { to { transform: rotate(360deg); } }
 
 @keyframes slideUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+.fadeOut { from { opacity: 1; transform: scale(1); filter: blur(0); } to { opacity: 0; transform: scale(.98); filter: blur(2px); } }
 .switch-br { position: absolute; right: 16px; bottom: 12px; }
 .submit_link { font-size: 12px; }
 

@@ -18,6 +18,19 @@ export const useUserStore = defineStore('user', {
       this.user = null
       this.isAuthenticated = false
     },
+    refreshUserInfo() {
+      // 从localStorage恢复用户信息
+      const localUser = localStorage.getItem('user')
+      if (localUser) {
+        try {
+          const parsedUser = JSON.parse(localUser)
+          this.user = parsedUser
+          this.isAuthenticated = true
+        } catch (e) {
+          console.error('解析localStorage用户信息失败:', e)
+        }
+      }
+    },
   },
 })
 
