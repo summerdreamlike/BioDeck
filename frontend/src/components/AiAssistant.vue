@@ -32,14 +32,22 @@
         <div class="panel-body">
           <div ref="scrollRef" class="messages">
             <div v-for="(m, i) in messages" :key="i" :class="['msg', m.role]">
-              <div class="bubble" v-text="m.content" />
+              <div class="bubble">
+                <template v-if="m.loading">
+                  <span>思考中…</span>
+                  <span class="loading-spinner" aria-hidden="true"></span>
+                </template>
+                <template v-else>
+                  {{ m.content }}
+                </template>
+              </div>
             </div>
           </div>
           <div class="composer" role="region" aria-label="输入区">
             <textarea
               v-model="input"
               class="ipt ta"
-              :placeholder="loading ? '思考中…' : ''"
+              :placeholder="loading ? '' : ''"
               rows="1"
               @keydown.enter.prevent="onEnter"
             />
@@ -54,7 +62,7 @@
 
 <script setup>
 /* global defineProps */
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
 
 const props = defineProps({
   baseURL: { type: String, default: '/api/v1/ai' },
@@ -188,6 +196,9 @@ function formatAnswer(raw){
   let text = String(raw).trim()
   // 规范换行与空白
   text = text.replace(/\r\n?|\n/g, '\n').replace(/\n{3,}/g, '\n\n')
+  // 清理 markdown 列表/多余符号：*, -, + 开头的项目；多余星号
+  text = text.replace(/^\s*[*\-+]\s+/gm, '')
+             .replace(/[*]{2,}/g, '')
   // 若没有明显分段，则按句号分段为更易读的形式（不再截断）
   if (!/\n/.test(text)) {
     const parts = text.split(/(?<=。|！|\?|？)/).map(s => s.trim()).filter(Boolean)
@@ -227,6 +238,7 @@ async function send(){
   input.value = ''
   messages.value.push({ role: 'user', content: question })
   loading.value = true
+  const pendingIdx = messages.value.push({ role: 'assistant', content: '思考中…', loading: true }) - 1
   await nextTick(); scrollToBottom()
   try {
     const res = await fetch(`${props.baseURL}/ask`, {
@@ -238,12 +250,14 @@ async function send(){
     const data = await res.json()
     const answer = data.answer || '抱歉，暂时无法回答。'
     const formatted = formatAnswer(answer)
-    const idx = messages.value.push({ role: 'assistant', content: '' }) - 1
-    typeOut(idx, formatted)
+    messages.value[pendingIdx].loading = false
+    messages.value[pendingIdx].content = ''
+    typeOut(pendingIdx, formatted)
   } catch (e) {
     const fallback = '服务暂不可用，已切换到示例回答：\n1. 细胞膜的主要成分是磷脂双分子层与蛋白质。\n2. 膜蛋白包括外周蛋白与整合蛋白，承担物质转运与信号传导。'
-    const idx = messages.value.push({ role: 'assistant', content: '' }) - 1
-    typeOut(idx, formatAnswer(fallback))
+    messages.value[pendingIdx].loading = false
+    messages.value[pendingIdx].content = ''
+    typeOut(pendingIdx, formatAnswer(fallback))
   } finally {
     loading.value = false
     await nextTick(); scrollToBottom()
@@ -274,6 +288,22 @@ onMounted(() => {
   }
   scrollToBottom()
   window.addEventListener('resize', placePanel)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', placePanel)
+  window.removeEventListener('mousemove', onMove)
+  window.removeEventListener('mouseup', onUp)
+  window.removeEventListener('touchmove', onMove)
+  window.removeEventListener('touchend', onUp)
+  window.removeEventListener('mousemove', onResizing)
+  window.removeEventListener('mouseup', onResizeUp)
+  window.removeEventListener('touchmove', onResizing)
+  window.removeEventListener('touchend', onResizeUp)
+  if (typingTimer.value) {
+    clearTimeout(typingTimer.value)
+    typingTimer.value = null
+  }
 })
 
 function placePanel(){
@@ -359,5 +389,9 @@ function placePanel(){
 .ipt:focus { border-color: #34d399; box-shadow: 0 0 0 3px rgba(16,185,129,.12); }
 .send { height: 30px; padding: 0 14px; border-radius: 12px; border: none; background: linear-gradient(135deg,#10b981,#34d399); color: #fff; font-weight: 700; cursor: pointer; box-shadow: 0 8px 16px rgba(16,185,129,.24); }
 .send:disabled { opacity: .6; cursor: not-allowed; box-shadow: none; }
+
+/* Loading 动画（圆形旋转） */
+.loading-spinner { display: inline-block; width: 14px; height: 14px; margin-left: 8px; border-radius: 50%; border: 2px solid rgba(6,95,70,.22); border-top-color: rgba(16,185,129,.9); animation: spin 0.8s linear infinite; vertical-align: -2px; }
+@keyframes spin { to { transform: rotate(360deg) } }
 </style>
 

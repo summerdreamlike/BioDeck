@@ -200,7 +200,7 @@ async function init() {
     const theta = (i / count) * Math.PI * 2
     const x = Math.cos(theta) * radius
     const z = Math.sin(theta) * radius
-    m.position.set(x, 0.75, z) // 图片下方
+    m.position.set(x, 0.8, z) // 图片下方
     m.lookAt(0, 1.4, 0)
     m.renderOrder = 999
     group.add(m)
@@ -245,7 +245,7 @@ function animate(){
     const front = camForward.dot(toMesh) > 0
     const mat = m.material
     mat.opacity = front ? 1.0 : 0.12
-    const targetScale = (i === hoveredIndex && front) ? 1.4 : 1.0
+    const targetScale = (i === hoveredIndex && front) ? 1.3 : 1.0
     m.scale.x = lerp(m.scale.x, targetScale, 0.2)
     m.scale.y = lerp(m.scale.y, targetScale, 0.2)
     // 文本标签与图片同步透明度与缩放
