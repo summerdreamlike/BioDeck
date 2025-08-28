@@ -147,6 +147,9 @@ BCDMT/
 
 ## 快速开始
 
+确保 Python 和 Node.js 环境已安装。
+在项目根目录下找到并运行 start-all.bat
+
 ### 前端启动
 
 ```bash
