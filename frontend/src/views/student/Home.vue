@@ -202,7 +202,7 @@ async function init() {
     const z = Math.sin(theta) * radius
     m.position.set(x, 0.75, z) // 图片下方
     m.lookAt(0, 1.4, 0)
-    m.renderOrder = 2000
+    m.renderOrder = 999
     group.add(m)
     return m
   })
