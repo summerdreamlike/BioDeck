@@ -1,7 +1,7 @@
 from flask import request, jsonify
 from ..api import api
-from ....services.ai_service import ai_service
-from ....services.biology_qa_adapter import BiologyQAAdapter
+from services.ai_service import ai_service
+from services.biology_qa_adapter import BiologyQAAdapter
 import os
 import tempfile
 

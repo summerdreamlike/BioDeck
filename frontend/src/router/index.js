@@ -25,6 +25,15 @@ const routes = [
     children:[
        { path: 'Home', name: 'Home', alias: '/Home', component: () => import('../views/student/Home.vue') },
        { path: 'profile', name: 'StudentProfile', alias: '/student/profile', component: () => import('../views/UserProfile.vue') },
+       // 学生端关卡页面
+       { path: 'levelt/level0', name: 'Level0', component: () => import('../views/student/levelt/Level0.vue') },
+       { path: 'levelt/level1', name: 'Level1', component: () => import('../views/student/levelt/Level1.vue') },
+       { path: 'levelt/level2', name: 'Level2', component: () => import('../views/student/levelt/Level2.vue') },
+       { path: 'levelt/level3', name: 'Level3', component: () => import('../views/student/levelt/Level3.vue') },
+       { path: 'levelt/level4', name: 'Level4', component: () => import('../views/student/levelt/Level4.vue') },
+       { path: 'levelt/level5', name: 'Level5', component: () => import('../views/student/levelt/Level5.vue') },
+       { path: 'levelt/level6', name: 'Level6', component: () => import('../views/student/levelt/Level6.vue') },
+       { path: 'levelt/level7', name: 'Level7', component: () => import('../views/student/levelt/Level7.vue') },
     ]
   },
   {

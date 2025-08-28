@@ -35,14 +35,13 @@
               <div class="bubble" v-text="m.content" />
             </div>
           </div>
-          <div class="composer">
-            <input
+          <div class="composer" role="region" aria-label="输入区">
+            <textarea
               v-model="input"
-              class="ipt"
-              type="text"
-              :placeholder="loading ? '思考中…' : '请输入生物相关问题'"
-              :disabled="loading"
-              @keyup.enter="send"
+              class="ipt ta"
+              :placeholder="loading ? '思考中…' : ''"
+              rows="1"
+              @keydown.enter.prevent="onEnter"
             />
             <button class="send" :disabled="!input || loading" @click="send">发送</button>
           </div>
@@ -54,6 +53,7 @@
 </template>
 
 <script setup>
+/* global defineProps */
 import { ref, onMounted, nextTick } from 'vue'
 
 const props = defineProps({
@@ -84,6 +84,7 @@ let startRY = 0
 let startW = 0
 let startH = 0
 const handleCorner = ref('br') // tl | tr | bl | br
+const typingTimer = ref(null)
 
 function toggle(){
   open.value = !open.value
@@ -182,6 +183,44 @@ function scrollToBottom(){
   el.scrollTop = el.scrollHeight
 }
 
+function formatAnswer(raw){
+  if (!raw) return ''
+  let text = String(raw).trim()
+  // 规范换行与空白
+  text = text.replace(/\r\n?|\n/g, '\n').replace(/\n{3,}/g, '\n\n')
+  // 若没有明显分段，则按句号分段为更易读的形式（不再截断）
+  if (!/\n/.test(text)) {
+    const parts = text.split(/(?<=。|！|\?|？)/).map(s => s.trim()).filter(Boolean)
+    if (parts.length) {
+      text = parts.map((s, i) => `${i+1}. ${s}`).join('\n')
+    }
+  }
+  return text
+}
+
+function typeOut(targetIndex, fullText){
+  // 将 messages[targetIndex].content 按逐字打印
+  const step = () => {
+    const cur = messages.value[targetIndex].content
+    if (cur.length >= fullText.length) { typingTimer.value = null; return }
+    const nextLen = Math.min(fullText.length, cur.length + Math.max(1, Math.floor(Math.random()*3+1)))
+    messages.value[targetIndex].content = fullText.slice(0, nextLen)
+    nextTick(scrollToBottom)
+    typingTimer.value = setTimeout(step, 16 + Math.random()*40)
+  }
+  if (typingTimer.value) clearTimeout(typingTimer.value)
+  typingTimer.value = setTimeout(step, 60)
+}
+
+function onEnter(e){
+  if (e.shiftKey) {
+    // 允许换行
+    return
+  }
+  e.preventDefault()
+  send()
+}
+
 async function send(){
   if (!input.value || loading.value) return
   const question = input.value.trim()
@@ -198,9 +237,13 @@ async function send(){
     if (!res.ok) throw new Error('网络错误')
     const data = await res.json()
     const answer = data.answer || '抱歉，暂时无法回答。'
-    messages.value.push({ role: 'assistant', content: answer })
+    const formatted = formatAnswer(answer)
+    const idx = messages.value.push({ role: 'assistant', content: '' }) - 1
+    typeOut(idx, formatted)
   } catch (e) {
-    messages.value.push({ role: 'assistant', content: '服务暂不可用，已切换到示例回答：细胞膜的主要成分是由磷脂双分子层和蛋白质构成。' })
+    const fallback = '服务暂不可用，已切换到示例回答：\n1. 细胞膜的主要成分是磷脂双分子层与蛋白质。\n2. 膜蛋白包括外周蛋白与整合蛋白，承担物质转运与信号传导。'
+    const idx = messages.value.push({ role: 'assistant', content: '' }) - 1
+    typeOut(idx, formatAnswer(fallback))
   } finally {
     loading.value = false
     await nextTick(); scrollToBottom()
@@ -226,7 +269,9 @@ onMounted(() => {
       const s = JSON.parse(ss)
       panelSize.value = { w: s.w || 360, h: s.h || Math.round(window.innerHeight * 0.62) }
     }
-  } catch {}
+  } catch {
+    panelSize.value = { w: 360, h: Math.round(window.innerHeight * 0.62) }
+  }
   scrollToBottom()
   window.addEventListener('resize', placePanel)
 })
@@ -300,18 +345,19 @@ function placePanel(){
 .close { width: 28px; height: 28px; border-radius: 8px; border: none; background: transparent; color: #065f46; cursor: pointer; font-size: 18px; }
 .close:hover { background: rgba(16,185,129,.08); }
 
-.panel-body { flex: 1; display: flex; flex-direction: column; }
-.messages { flex: 1; padding: 12px; overflow: auto; background: linear-gradient(180deg, #f6fffb 0%, #ffffff 100%); }
+.panel-body { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.messages { flex: 1; min-height: 0; padding: 12px; overflow-y: auto; background: linear-gradient(180deg, #f6fffb 0%, #ffffff 100%); overscroll-behavior: contain; }
 .msg { display: flex; margin: 8px 0; }
 .msg.user { justify-content: flex-end; }
-.bubble { max-width: 78%; padding: 10px 12px; border-radius: 12px; line-height: 1.5; font-size: 14px; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+.bubble { max-width: 78%; padding: 10px 12px; border-radius: 12px; line-height: 1.6; font-size: 14px; box-shadow: 0 2px 8px rgba(0,0,0,.06); white-space: pre-wrap; }
 .msg.assistant .bubble { background: #f0fdf4; border: 1px solid rgba(16,185,129,.2); color: #065f46; }
 .msg.user .bubble { background: #eff6ff; border: 1px solid rgba(59,130,246,.2); color: #1e40af; }
 
-.composer { display: flex; gap: 8px; padding: 10px; border-top: 1px solid rgba(16,185,129,.12); }
-.ipt { flex: 1; height: 40px; border-radius: 12px; border: 1px solid #e5e7eb; padding: 0 12px; outline: none; transition: box-shadow .2s ease, border-color .2s ease; }
+.composer { display: flex; gap: 8px; padding: 10px; border-top: 1px solid rgba(16,185,129,.12); background: #fff; }
+.ipt { flex: 1; border-radius: 12px; border: 1px solid #e5e7eb; padding: 3px 12px; outline: none; transition: box-shadow .2s ease, border-color .2s ease; }
+.ipt.ta {  max-height: 120px; resize: none; line-height: 1.4; }
 .ipt:focus { border-color: #34d399; box-shadow: 0 0 0 3px rgba(16,185,129,.12); }
-.send { height: 40px; padding: 0 14px; border-radius: 12px; border: none; background: linear-gradient(135deg,#10b981,#34d399); color: #fff; font-weight: 700; cursor: pointer; box-shadow: 0 8px 16px rgba(16,185,129,.24); }
+.send { height: 30px; padding: 0 14px; border-radius: 12px; border: none; background: linear-gradient(135deg,#10b981,#34d399); color: #fff; font-weight: 700; cursor: pointer; box-shadow: 0 8px 16px rgba(16,185,129,.24); }
 .send:disabled { opacity: .6; cursor: not-allowed; box-shadow: none; }
 </style>
 

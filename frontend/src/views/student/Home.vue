@@ -11,42 +11,63 @@
 <script setup>
 import { onMounted, onBeforeUnmount, ref } from 'vue'
 import * as THREE from 'three'
+import { useRouter } from 'vue-router'
 import AiAssistant from '../../components/AiAssistant.vue'
 
 const wrapRef = ref(null)
 const canvasRef = ref(null)
 
 // 资源与链接（将 0.png-7.png 放在 src/assets/img/ 下）
-// 使用 webpack 的 require.context 以避免路径解析问题，并兼容 jpg/png
 const ctx = require.context('../../assets/img', false, /\.(png|jpe?g)$/)
 const imgMap = {}
 ctx.keys().forEach(k => { imgMap[k.replace('./','')] = ctx(k) })
 const fallbackImg = imgMap['1.png'] || imgMap['Logo.png'] || ''
 const imageFiles = Array.from({ length: 8 }, (_, i) => imgMap[`${i}.png`] || imgMap[`${i}.jpg`] || fallbackImg)
+// 跳转到学生端关卡路由
 const links = [
-  'https://example.com/0',
-  'https://example.com/1',
-  'https://example.com/2',
-  'https://example.com/3',
-  'https://example.com/4',
-  'https://example.com/5',
-  'https://example.com/6',
-  'https://example.com/7'
+  '/StudentSide/levelt/level0',
+  '/StudentSide/levelt/level1',
+  '/StudentSide/levelt/level2',
+  '/StudentSide/levelt/level3',
+  '/StudentSide/levelt/level4',
+  '/StudentSide/levelt/level5',
+  '/StudentSide/levelt/level6',
+  '/StudentSide/levelt/level7'
 ]
-// 每张图片对应的背景色（可按需要调整为接近图片主色）
+// 每张图片下方标题
+const titles = [
+  '细胞的组成',
+  '细胞的结构与功能',
+  '细胞的物质输入和输出',
+  '酶和ATP',
+  '细胞呼吸',
+  '光合作用',
+  '细胞的增殖和减数分裂',
+  '细胞的分化、衰老、凋亡和癌变'
+]
 const bgColors = ['#f5f7fa']
 
 let scene, camera, renderer, group
 let textures = []
 let meshes = []
+let labelMeshes = []
 let animId
-// 交互拾取
 const raycaster = new THREE.Raycaster()
 const pointer = new THREE.Vector2()
 let hoveredIndex = -1
-
-// 仅在按下时允许旋转
 const isDragging = ref(false)
+const router = useRouter()
+
+// 旋转与交互状态
+let angle = 0
+let targetAngle = 0
+let startX = 0
+let startAngleSnapshot = 0
+let activeIndex = 0
+
+function lerp(a, b, t){
+  return a + (b - a) * t
+}
 
 // 圆形裁剪：将图片绘制到圆形 canvas，作为纹理
 function toCircleDataURL(src, size = 512) {
@@ -71,50 +92,58 @@ function toCircleDataURL(src, size = 512) {
       resolve(c.toDataURL('image/png'))
     }
     img.onerror = () => resolve(null)
-    img.src = src
+    img.src = typeof src === 'string' ? src : (src && src.default) ? src.default : src
   })
 }
 
-// 当前旋转角与目标角
-let angle = 0
-let targetAngle = 0
-// 拖动起点
-let startX = 0
-let startAngleSnapshot = 0
-// 当前"选中"的索引（镜头正前方）
-let activeIndex = 0
-
-function lerp(a,b,t){ return a+(b-a)*t }
+function createLabelTexture(text){
+  const padX = 24, padY = 10
+  const fontSize = 60
+  const canvas = document.createElement('canvas')
+  const ctx2d = canvas.getContext('2d')
+  ctx2d.font = `${fontSize}px \\"Segoe UI\\", Arial, sans-serif`
+  const metrics = ctx2d.measureText(text)
+  const textW = Math.ceil(metrics.width)
+  const w = textW + padX * 2
+  const h = fontSize + padY * 2
+  canvas.width = w
+  canvas.height = h
+  // 仅绘制文字，背景保持透明，标记文字颜色
+  ctx2d.font = `${fontSize}px \\"Segoe UI\\", Arial, sans-serif`
+  ctx2d.fillStyle = '#000000'
+  ctx2d.textBaseline = 'middle'
+  ctx2d.fillText(text, padX, h/2)
+  const tex = new THREE.CanvasTexture(canvas)
+  tex.anisotropy = 4
+  // 水平镜像文字贴图（左右翻转显示）
+  tex.center.set(0.5, 0.5)
+  tex.repeat.x = -1
+  tex.needsUpdate = true
+  return { texture: tex, width: w, height: h }
+}
 
 async function init() {
   scene = new THREE.Scene()
-
   const w = wrapRef.value.clientWidth
   const h = wrapRef.value.clientHeight
   const fov = 35
   camera = new THREE.PerspectiveCamera(fov, w/h, 0.1, 100)
-  // 屏幕上方的中心点：抬高相机位置并俯视轻微
   camera.position.set(0, 1.4, 5.5)
   camera.lookAt(0, 1.4, 0)
 
   renderer = new THREE.WebGLRenderer({ canvas: canvasRef.value, antialias: true, alpha: true })
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
   renderer.setSize(w, h)
-  // 启用软阴影
   renderer.shadowMap.enabled = true
   renderer.shadowMap.type = THREE.PCFSoftShadowMap
   
-  // 分组，用于整体旋转
   group = new THREE.Group()
   scene.add(group)
-  // 整体上移一点
   group.position.y = 0.3
   
-  // 灯光与阴影
   const amb = new THREE.AmbientLight(0xffffff, 2.5)
   scene.add(amb)
   const dirLight = new THREE.DirectionalLight(0xffffff, 0.7)
-  // 将光源放在屏幕前方（靠近相机方向），并指向场景中心
   dirLight.position.set(0, 3.8, 5.2)
   dirLight.castShadow = true
   dirLight.shadow.mapSize.set(1024, 1024)
@@ -125,31 +154,21 @@ async function init() {
   dirLight.target.position.set(0, 1.4, 0)
   scene.add(dirLight)
   scene.add(dirLight.target)
-  // 半球光，提升整体亮度与层次
   const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 0.4)
   scene.add(hemi)
-  // 接收阴影的地面（影子接收器）
   const groundGeo = new THREE.CircleGeometry(3.0, 64)
   const groundMat = new THREE.ShadowMaterial({ opacity: 0.18 })
   const ground = new THREE.Mesh(groundGeo, groundMat)
   ground.rotation.x = -Math.PI / 2
   ground.position.set(0, 0.9, 0)
-  // 横向拉伸，形成椭圆接收区
   ground.scale.set(1.6, 1, 1)
   ground.receiveShadow = true
   scene.add(ground)
   
-  // 预处理圆形纹理
   const circUrls = await Promise.all(imageFiles.map(src => toCircleDataURL(src)))
   const loader = new THREE.TextureLoader()
   textures = circUrls.map(u => loader.load(u || fallbackImg))
-  // 水平镜像翻转所有纹理
-  textures.forEach(tex => {
-    if (!tex) return
-    tex.center.set(0.5, 0.5)
-    tex.repeat.x = -1
-    tex.needsUpdate = true
-  })
+  textures.forEach(tex => { if (!tex) return; tex.center.set(0.5,0.5); tex.repeat.x = -1; tex.needsUpdate = true })
 
   const count = textures.length
   const radius = 2.5
@@ -165,56 +184,80 @@ async function init() {
     mesh.lookAt(0, 1.4, 0)
     mesh.userData = { index: i }
     mesh.castShadow = true
-    mesh.receiveShadow = false
     group.add(mesh)
     return mesh
   })
+  // 创建文字标签
+  labelMeshes = titles.map((t, i) => {
+    const { texture, width, height } = createLabelTexture(t)
+    const scaleW = 0.9
+    const pxToWorld = (planeSize * scaleW) / (512) // 以图片尺寸基准估算
+    const wWorld = width * pxToWorld
+    const hWorld = height * pxToWorld
+    const geo = new THREE.PlaneGeometry(wWorld, hWorld)
+    const mat = new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false, depthTest: false, side: THREE.DoubleSide })
+    const m = new THREE.Mesh(geo, mat)
+    const theta = (i / count) * Math.PI * 2
+    const x = Math.cos(theta) * radius
+    const z = Math.sin(theta) * radius
+    m.position.set(x, 0.75, z) // 图片下方
+    m.lookAt(0, 1.4, 0)
+    m.renderOrder = 2000
+    group.add(m)
+    return m
+  })
 
-  // 初始背景
   setBgColor(activeIndex)
 
-  // 监听（按下拖动）
   const canvas = canvasRef.value
   canvas.addEventListener('mousedown', onDown)
   canvas.addEventListener('mouseup', onUp)
   canvas.addEventListener('mouseleave', onUp)
   canvas.addEventListener('mousemove', onMouseMove)
-  // 触控
   canvas.addEventListener('touchstart', onTouchStart, { passive: true })
   canvas.addEventListener('touchend', onTouchEnd, { passive: true })
   canvas.addEventListener('touchcancel', onTouchEnd, { passive: true })
   canvas.addEventListener('touchmove', onTouchMove, { passive: true })
-
   canvas.addEventListener('dblclick', onDblClickOpen)
   window.addEventListener('resize', onResize)
 
   animate()
 }
 
+function onDblClickOpen(){
+  const m = meshes[activeIndex]
+  if (!m) return
+  const camForward = new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion)
+  const front = camForward.dot(new THREE.Vector3().subVectors(m.position, camera.position).normalize()) > 0
+  if (!front) return
+  const url = links[activeIndex]
+  if (url) router.push(url)
+}
+
 function animate(){
   animId = requestAnimationFrame(animate)
-  // 自动缓慢旋转（未拖拽时）
-  if (!isDragging.value) {
-    targetAngle += 0.0008
-  }
-  // 平滑插值
+  if (!isDragging.value) { targetAngle += 0.0008 }
   angle = lerp(angle, targetAngle, 0.06)
   group.rotation.y = angle
-  // 根据朝向调整可见性与透明度，避免后半区误触
   const camForward = new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion)
   meshes.forEach((m, i) => {
     const toMesh = new THREE.Vector3().subVectors(m.position, camera.position).normalize()
-    const front = camForward.dot(toMesh) > 0 // 前半区
+    const front = camForward.dot(toMesh) > 0
     const mat = m.material
-    if (front) {
-      mat.opacity = 1.0
-    } else {
-      mat.opacity = 0.12
-    }
-    // 悬停缩放（仅前半区）
+    mat.opacity = front ? 1.0 : 0.12
     const targetScale = (i === hoveredIndex && front) ? 1.4 : 1.0
     m.scale.x = lerp(m.scale.x, targetScale, 0.2)
     m.scale.y = lerp(m.scale.y, targetScale, 0.2)
+    // 文本标签与图片同步透明度与缩放
+    const label = labelMeshes[i]
+    if (label){
+      const lm = label.material
+      lm.opacity = front ? 1.0 : 0.12
+      const labelScale = (i === hoveredIndex && front) ? 1.12 : 1.0
+      label.scale.x = lerp(label.scale.x || 1, labelScale, 0.2)
+      label.scale.y = lerp(label.scale.y || 1, labelScale, 0.2)
+      // 让文字随图片方向转动（不强制面向相机）
+    }
   })
   renderer.render(scene, camera)
 }
@@ -283,17 +326,6 @@ function setBgColor(i){
   const wrap = wrapRef.value
   if (!wrap) return
   wrap.style.background = bgColors[i % bgColors.length]
-}
-
-function onDblClickOpen(){
-  // 仅当前半区才响应
-  const m = meshes[activeIndex]
-  if (!m) return
-  const camForward = new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion)
-  const front = camForward.dot(new THREE.Vector3().subVectors(m.position, camera.position).normalize()) > 0
-  if (!front) return
-  const url = links[activeIndex]
-  if (url) window.open(url, '_blank')
 }
 
 function onResize(){
