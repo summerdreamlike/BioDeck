@@ -39,8 +39,13 @@ function onAfter() { isTransitioning.value = false }
 .view-wrap { position: relative; min-height: 100vh; }
 .overlay { position: fixed; inset: 0; pointer-events: none; opacity: 0; transition: opacity .45s cubic-bezier(.2,.8,.2,1); z-index: 10;
   background: radial-gradient(60% 40% at 20% 15%, rgba(16,185,129,.10), transparent 60%),
-              radial-gradient(50% 40% at 80% 85%, rgba(167,243,208,.10), transparent 60%),
-              linear-gradient(180deg, rgba(255,255,255,.70), rgba(255,255,255,.55));
+              radial-gradient(50% 40% at 80% 85%, rgba(59,130,246,.10), transparent 60%),
+              linear-gradient(180deg, rgba(255,255,255,.35), rgba(255,255,255,.22));
+  will-change: opacity;
 }
-.is-transitioning .overlay { opacity: .35; }
+.is-transitioning .overlay { opacity: .22; }
+
+@media (prefers-reduced-motion: reduce){
+  .overlay{ transition: none; }
+}
 </style>

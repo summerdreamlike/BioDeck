@@ -24,7 +24,10 @@ const routes = [
     redirect: '/StudentSide/Home',
     children:[
        { path: 'Home', name: 'Home', alias: '/Home', component: () => import('../views/student/Home.vue') },
-       { path: 'profile', name: 'StudentProfile', alias: '/student/profile', component: () => import('../views/UserProfile.vue') },
+       { path: 'profile', name: 'StudentProfile', alias: '/student/profile', component: () => import('../views/UserProfile.vue'), meta: { hideBottomNav: true, hideAiAssistant: true } },
+       { path: 'draw', name: 'Draw', component: () => import('../views/student/Draw.vue') },
+       { path: 'atlas', name: 'Atlas', component: () => import('../views/student/Atlas.vue') },
+       { path: 'achievements', name: 'Achievements', component: () => import('../views/student/Achievements.vue') },
        // 学生端关卡页面
        { path: 'levelt/level0', name: 'Level0', component: () => import('../views/student/levelt/Level0.vue') },
        { path: 'levelt/level1', name: 'Level1', component: () => import('../views/student/levelt/Level1.vue') },
@@ -49,7 +52,7 @@ const routes = [
       { path: 'tasks', name: 'Tasks', alias: '/tasks', component: () => import('../views/Tasks.vue') },
       { path: 'feedback', name: 'Feedback', alias: '/feedback', component: () => import('../views/Feedback.vue') },
       { path: 'attendance', name: 'Attendance', alias: '/attendance', component: () => import('../views/Attendance.vue') },
-      { path: 'profile', name: 'TeacherProfile', alias: '/profile', component: () => import('../views/UserProfile.vue') },
+      { path: 'profile', name: 'TeacherProfile', alias: '/profile', component: () => import('../views/UserProfile.vue'), meta: { hideSidebar: true, hideBottomNav: true, hideAiAssistant: true } },
     ]
   },
   {

@@ -27,6 +27,8 @@
     <!-- 主内容区域 -->
     <el-main class="main-content">
       <router-view />
+      <BottomNav v-if="!$route.meta?.hideBottomNav" />
+      <AiAssistant v-if="!$route.meta?.hideAiAssistant" />
     </el-main>
   </el-container>
 </template>
@@ -37,6 +39,8 @@ import { useRouter } from 'vue-router'
 import { useUserStore } from '../../store'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import LogoImage from '../../assets/img/Logo.png'
+import AiAssistant from '../../components/AiAssistant.vue'
+import BottomNav from '../../components/BottomNav.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -94,7 +98,7 @@ onMounted(() => {
 .layout-container { height: 100vh; display: flex; flex-direction: column; }
 
 .header { 
-  background: #fff; border-bottom: 1px solid #e6e6e6; padding: 0 20px; 
+  background: #fff; border-bottom: 1px solid #e6e6e6; padding: 0 1px; 
   display: flex; align-items: center; justify-content: space-between; height: 75px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
@@ -110,5 +114,12 @@ onMounted(() => {
 .dropdown-link:hover { background-color: #f5f7fa; color: #409EFF; }
 .dropdown-link:focus { outline: none; box-shadow: none; }
 
-.main-content { flex: 1; background: #f5f7fa; padding: 20px; overflow: auto; }
+.main-content { 
+  flex: 1; 
+  background: rgba(245, 247, 250, 0.6); 
+  backdrop-filter: blur(8px) saturate(120%);
+  -webkit-backdrop-filter: blur(8px) saturate(120%);
+  padding: 0px; 
+  overflow: auto; 
+}
 </style>

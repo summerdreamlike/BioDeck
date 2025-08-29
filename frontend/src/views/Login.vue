@@ -223,9 +223,6 @@ async function onSubmit() {
       } else if (errorMessage && errorMessage.includes('格式')) {
         // 针对格式错误的情况
         ElMessage.error(errorMessage)
-      } else {
-        // 其他错误情况
-        ElMessage.error('操作失败，请检查账号/网络后重试')
       }
     } else {
       // 网络错误或其他未知错误

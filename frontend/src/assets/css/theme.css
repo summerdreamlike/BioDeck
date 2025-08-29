@@ -1,0 +1,60 @@
+:root{
+  /* Colors */
+  --bg: #f7f9fb;
+  --surface: rgba(255,255,255,0.6);
+  --text: #1f2937;
+  --muted: #6b7280;
+  --brand: #3b82f6;
+  --brand-weak: rgba(59,130,246,0.15);
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+
+  /* Radii & shadow */
+  --radius: 16px;
+  --shadow-elev: 0 24px 42px rgba(0,0,0,.16);
+
+  /* Motion */
+  --ease: cubic-bezier(.2,.8,.2,1);
+  --ease-emph: cubic-bezier(.2,.9,.25,1.2);
+  --dur-1: .18s; /* small */
+  --dur-2: .28s; /* medium */
+  --dur-3: .45s; /* large */
+}
+
+/* App base */
+html, body, #app{
+  height: 100%;
+}
+body{
+  margin: 0;
+  color: var(--text);
+  background:
+    radial-gradient(60% 40% at 20% 15%, rgba(16,185,129,.06), transparent 60%),
+    radial-gradient(50% 40% at 80% 85%, rgba(59,130,246,.06), transparent 60%),
+    linear-gradient(180deg, #ffffff 0%, var(--bg) 100%);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Common transitions */
+.fade-enter-active, .fade-leave-active{ transition: opacity var(--dur-3) var(--ease); }
+.fade-enter-from, .fade-leave-to{ opacity: 0; }
+
+/* Utility: glass panel */
+.u-glass{
+  background: transparent;
+  backdrop-filter: blur(24px) saturate(180%) contrast(110%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%) contrast(110%);
+  border: 1px solid rgba(255,255,255,0.28);
+  box-shadow: var(--shadow-elev);
+  border-radius: var(--radius);
+}
+
+/* Links & focus */
+a{ color: var(--brand); text-decoration: none; transition: color var(--dur-1) var(--ease); }
+a:hover{ color: #1d4ed8; }
+button{ outline: none; }
+button:focus-visible{ box-shadow: 0 0 0 3px var(--brand-weak); border-radius: 10px; }
+
+

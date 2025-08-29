@@ -28,9 +28,9 @@
       </div>
     </el-header>
     
-    <el-container class="main-container">
+    <el-container class="main-container" :class="{ 'no-sidebar': hideSidebar }">
       <!-- 侧边栏 -->
-      <el-aside :width="asideWidth" class="sidebar" :class="[{ collapsed: isCollapsed, 'mobile-open': isMobile && mobileOpen}]">
+      <el-aside v-if="!hideSidebar" :width="asideWidth" class="sidebar" :class="[{ collapsed: isCollapsed, 'mobile-open': isMobile && mobileOpen}]">
         <!-- 侧边栏工具栏：折叠按钮（桌面端显示） -->
         <div class="sidebar-tools" v-if="!isMobile">
           <button class="collapse-btn" type="button" @click="isCollapsed = !isCollapsed">
@@ -61,7 +61,7 @@
 
 <script setup>
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '../store'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import LogoImage from '../assets/img/Logo.png'
@@ -86,6 +86,8 @@ const isCollapsed = ref(false)
 const isMobile = ref(false)
 const mobileOpen = ref(false)
 const asideWidth = computed(() => isMobile.value ? '220px' : (isCollapsed.value ? '74px' : '200px'))
+const route = useRoute()
+const hideSidebar = computed(() => route.meta && route.meta.hideSidebar === true)
 
 function handleResize() {
   isMobile.value = window.innerWidth < 992

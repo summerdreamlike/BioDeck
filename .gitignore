@@ -45,11 +45,7 @@ backend/*.sqlite3
 backend/uploads/
 backend/static/uploads/
 
-# API Keys and sensitive files
-backend/services/.bio_api_key
-backend/.bio_api_key
-*.api_key
-.env
+
 
 # ----- Misc large/binary -----
 *.zip

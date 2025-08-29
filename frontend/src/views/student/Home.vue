@@ -3,7 +3,6 @@
     <div class="three-wrap" ref="wrapRef">
       <canvas ref="canvasRef" class="three-canvas"></canvas>
     </div>
-    <AiAssistant />
   </div>
   
 </template>
@@ -12,7 +11,6 @@
 import { onMounted, onBeforeUnmount, ref } from 'vue'
 import * as THREE from 'three'
 import { useRouter } from 'vue-router'
-import AiAssistant from '../../components/AiAssistant.vue'
 
 const wrapRef = ref(null)
 const canvasRef = ref(null)
@@ -45,7 +43,7 @@ const titles = [
   '细胞的增殖和减数分裂',
   '细胞的分化、衰老、凋亡和癌变'
 ]
-const bgColors = ['#f5f7fa']
+const bgColors = ['#dbeafe']
 
 let scene, camera, renderer, group
 let textures = []
@@ -171,8 +169,8 @@ async function init() {
   textures.forEach(tex => { if (!tex) return; tex.center.set(0.5,0.5); tex.repeat.x = -1; tex.needsUpdate = true })
 
   const count = textures.length
-  const radius = 2.5
-  const planeSize = 0.85
+  const radius = 2.35
+  const planeSize = 0.8
   meshes = textures.map((tex, i) => {
     const geo = new THREE.PlaneGeometry(planeSize, planeSize)
     const mat = new THREE.MeshLambertMaterial({ map: tex, transparent: true, side: THREE.DoubleSide, alphaTest: 0.5 })
@@ -201,7 +199,7 @@ async function init() {
     const x = Math.cos(theta) * radius
     const z = Math.sin(theta) * radius
     m.position.set(x, 0.8, z) // 图片下方
-    m.lookAt(0, 1.4, 0)
+    m.lookAt(0, 0.8, 0)
     m.renderOrder = 999
     group.add(m)
     return m
@@ -380,7 +378,7 @@ function updateHover(){
 </script>
 
 <style scoped>
-.three-wrap { position: relative; width: 100%; height: calc(100vh - 120px); transition: background-color .35s ease; display: flex; align-items: flex-start; justify-content: center; }
+.three-wrap { position: relative; width: 100%; height: 100vh; transition: background-color .35s ease; display: flex; align-items: flex-start; justify-content: center; }
 .three-canvas { width: 100%; height: 100%; display: block; }
 .hint { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); font-size: 12px; color: rgba(255,255,255,.9); background: rgba(0,0,0,.25); padding: 6px 10px; border-radius: 999px; }
 </style>
