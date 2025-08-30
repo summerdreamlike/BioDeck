@@ -152,7 +152,7 @@ const cardTransformStyle = computed(() => ({
 .points .value{ font-weight:700; color:#333; }
 .points :deep(.el-button.gbtn-mini){ padding:4px 8px; }
 
-.gacha-stage{ display:flex; justify-content:center; align-items:center; padding:24px 0 12px; perspective: 1100px; }
+.gacha-stage{ display:flex; justify-content:center; align-items:center; padding:34px 3% 12px; perspective: 900px; width: 95%;}
 .card-frame{ width: clamp(220px, 42vw, 300px); aspect-ratio: 3/6; border-radius:16px; background:linear-gradient(145deg,#eef2f7,#ffffff); position:relative; box-shadow: 0 20px 40px rgba(0,0,0,.08), inset 0 0 0 1px rgba(0,0,0,.04); overflow:hidden; transition: transform .22s cubic-bezier(.22,.61,.36,1), box-shadow .22s; transform-style: preserve-3d; }
 .card-art{ position:absolute; inset:0; border-radius:inherit; background-image: url('@/assets/img/Decks/塔罗牌背面.jpg'); background-position:center; background-repeat:no-repeat; background-size: 100% auto; }
 
@@ -164,11 +164,12 @@ const cardTransformStyle = computed(() => ({
   pointer-events: none;
   border-radius: inherit;
   background: linear-gradient(115deg,
-    transparent calc(var(--per, 50%) - 22%),
-    rgba(255,255,255,.55) var(--per, 50%),
-    transparent calc(var(--per, 50%) + 22%));
+    transparent calc(var(--per, 0%) - 22%),
+    rgba(255,255,255,.55) var(--per, 0%),
+    transparent calc(var(--per, 0%) + 22%));
   mix-blend-mode: color-dodge;
 }
+
 
 /* GIF 星星闪烁叠加层（模块导入） */
 .gif-stars{ position:absolute; inset:0; width:100%; height:100%; object-fit: cover; mix-blend-mode: screen; pointer-events:none; opacity:.9; border-radius:inherit; z-index:1; }

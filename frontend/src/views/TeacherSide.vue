@@ -147,10 +147,10 @@ onMounted(() => {
   
   // 检查是否有有效的用户信息和token
   const token = localStorage.getItem('token')
-  if (!user || !token) {
-    // 如果没有用户信息或token，跳转到登录页
-    router.push('/Login')
-  }
+  // if (!user || !token) {
+  //   // 如果没有用户信息或token，跳转到登录页
+  //   router.push('/Login')
+  // }
 })
 
 onBeforeUnmount(() => {

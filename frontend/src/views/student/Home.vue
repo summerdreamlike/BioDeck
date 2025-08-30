@@ -378,7 +378,7 @@ function updateHover(){
 </script>
 
 <style scoped>
-.three-wrap { position: relative; width: 100%; height: 100vh; transition: background-color .35s ease; display: flex; align-items: flex-start; justify-content: center; }
-.three-canvas { width: 100%; height: 100%; display: block; }
+.three-wrap { position: relative; width: 100%; height: 91vh; transition: background-color .35s ease; display: flex; align-items: flex-start; justify-content: center; }
+.three-canvas { width: 100%; height: 90%; display: block; }
 .hint { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); font-size: 12px; color: rgba(255,255,255,.9); background: rgba(0,0,0,.25); padding: 6px 10px; border-radius: 999px; }
 </style>
