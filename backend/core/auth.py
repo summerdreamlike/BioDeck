@@ -25,8 +25,9 @@ def role_required(role):
             verify_jwt_in_request()
             
             # 检查角色
-            identity = get_jwt_identity()
-            if identity.get('role') != role:
+            identity_str = get_jwt_identity()
+            user_role = identity_str.split(':')[1]  # 解析用户角色
+            if user_role != role:
                 raise ApiError("权限不足", code=ErrorCode.FORBIDDEN, http_status=403)
             
             return fn(*args, **kwargs)
@@ -43,8 +44,9 @@ def roles_required(roles):
             verify_jwt_in_request()
             
             # 检查角色
-            identity = get_jwt_identity()
-            if identity.get('role') not in roles:
+            identity_str = get_jwt_identity()
+            user_role = identity_str.split(':')[1]  # 解析用户角色
+            if user_role not in roles:
                 raise ApiError("权限不足", code=ErrorCode.FORBIDDEN, http_status=403)
             
             return fn(*args, **kwargs)

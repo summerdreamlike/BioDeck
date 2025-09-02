@@ -9,7 +9,6 @@
               <div class="title">
                 <el-icon><el-icon-user /></el-icon>
                 <span>个人中心</span>
-                <el-tag class="role-tag" :type="roleTagType" round>{{ roleText }}</el-tag>
               </div>
             </div>
           </template>
@@ -17,7 +16,7 @@
           <el-row :gutter="20">
             <el-col :span="8">
               <div class="avatar-wrap">
-                <el-avatar :size="96" :src="avatarUrl">{{ initials }}</el-avatar>
+                <el-avatar :size="180" :src="avatarUrl">{{ initials }}</el-avatar>
                 <el-button size="small" @click="openAvatar">上传头像</el-button>
               </div>
             </el-col>
@@ -151,7 +150,8 @@
     </el-row>
   </div>
   <!-- 修改密码对话框 -->
-  <el-dialog v-model="showPwd" title="修改密码" width="420px">
+  <el-dialog v-model="showPwd" title="修改密码" width="420px" 
+             @keydown.enter.prevent="submitChangePassword(pwdFormRef)">
     <el-form :model="pwdForm" :rules="pwdRules" ref="pwdFormRef" label-width="96px">
       <el-form-item label="原密码" prop="old_password">
         <el-input v-model="pwdForm.old_password" type="password" show-password />
@@ -174,7 +174,6 @@
     <AvatarCropper :size="280" @cancel="showAvatar=false" @done="onAvatarDone" />
     <template #footer>
       <el-button @click="showAvatar=false">关闭</el-button>
-      <el-button type="primary" :loading="uploading" @click="document.querySelector('.cropper-container .file-input')?.click()">选择图片</el-button>
     </template>
   </el-dialog>
 </template>
@@ -182,7 +181,7 @@
 <script setup>
 import { computed, reactive, ref, watchEffect } from 'vue'
 import { useUserStore } from '../store'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { authApi, userApi } from '@/api'
 import AvatarCropper from '@/components/AvatarCropper.vue'
 
@@ -203,6 +202,14 @@ watchEffect(() => {
 
 const initials = computed(() => (form.name || 'U').slice(0,1))
 const avatarUrl = ref('')
+// 初始化头像：优先用户信息中的 avatar_url
+watchEffect(() => {
+  const url = user.value?.avatar_url
+  if (url) {
+    // 加时间戳避免缓存
+    avatarUrl.value = `${url}?t=${Date.now()}`
+  }
+})
 const showPwd = ref(false)
 const pwdForm = reactive({ old_password: '', new_password: '', confirm_password: '' })
 const pwdFormRef = ref()
@@ -211,7 +218,7 @@ const pwdRules = {
   new_password: [
     { required: true, message: '请输入新密码', trigger: 'blur' },
     { min: 6, message: '至少6位', trigger: 'blur' },
-    { validator: (_, v, cb) => (/\d/.test(v) && /[A-Za-z]/.test(v)) ? cb() : cb(new Error('需含字母与数字')), trigger: 'blur' }
+    
   ],
   confirm_password: [
     { required: true, message: '请再次输入新密码', trigger: 'blur' },
@@ -230,16 +237,6 @@ const persona = computed(() => ({
 const idText = computed(() => isTeacher.value ? (form.teacher_id || '—') : (isStudent.value ? (form.student_id || '—') : '—'))
 
 const teacherStats = reactive({ classes: 2, students: 60, tasks: 12 })
-
-function onSave() {
-  saving.value = true
-  setTimeout(() => {
-    const merged = { ...(user.value || {}), name: form.name }
-    userStore.setUserInfo(merged)
-    ElMessage.success('保存成功')
-    saving.value = false
-  }, 500)
-}
 
 async function submitChangePassword(formEl) {
   if (!formEl) return
@@ -270,18 +267,35 @@ async function onAvatarDone(blob) {
     uploading.value = true
     // 将 Blob 包装为 File，并进行体积校验
     const file = new File([blob], 'avatar.png', { type: 'image/png' })
-    if (file.size > 10 * 1024 * 1024) {
-      ElMessage.error('图片大小不能超过10MB')
+    if (file.size > 5 * 1024 * 1024) {
+      ElMessage.error('图片大小不能超过5MB')
       uploading.value = false
       return
     }
+    
+    // 调试信息
+    const token = localStorage.getItem('token')
+    console.log('Token:', token ? '存在' : '不存在')
+    console.log('File size:', file.size, 'bytes')
+    console.log('File type:', file.type)
     const fd = new FormData()
     fd.append('avatar', file)
     const res = await userApi.uploadAvatar(fd)
-    avatarUrl.value = res?.data?.avatar_url || avatarUrl.value
+    const newUrl = res?.data?.avatar_url
+    if (newUrl) {
+      // 同步到Pinia与本地存储
+      const updatedUser = { ...(user.value || {}), avatar_url: newUrl }
+      userStore.setUserInfo(updatedUser)
+      localStorage.setItem('user', JSON.stringify(updatedUser))
+      // 立即刷新本页头像并避免缓存
+      avatarUrl.value = `${newUrl}?t=${Date.now()}`
+    }
     ElMessage.success('头像更新成功')
     showAvatar.value = false
   } catch (e) {
+    console.error('upload error:', e?.response?.data)
+    console.error('upload error status:', e?.response?.status)
+    console.error('upload error headers:', e?.response?.headers)
     ElMessage.error(e?.response?.data?.message || '上传失败')
   } finally {
     uploading.value = false
@@ -303,9 +317,8 @@ async function onAvatarDone(blob) {
 
 .card-header { display: flex; align-items: center; justify-content: space-between; }
 .title { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; }
-.role-tag{ margin-left: 8px; }
 
-.avatar-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.avatar-wrap { display: flex; flex-direction: column; align-items: center; gap: 20px; }
 
 .sec-title { font-weight: 600; }
 .sec-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; }
@@ -329,7 +342,7 @@ async function onAvatarDone(blob) {
 :deep(.el-button:hover){ transform: translateY(-1px); }
 
 /* 合理的占比与留白 */
-:deep(.el-card__body){ padding: 16px 18px; }
+:deep(.el-card__body){ padding: 36px 18px; }
 
 /* 颜色与图标强化 */
 .mini-head{ display: flex; align-items: center; gap: 8px; justify-content: center; margin-bottom: 8px; }

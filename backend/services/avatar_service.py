@@ -22,6 +22,43 @@ class AvatarService:
     AVATAR_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'uploads', 'avatars')
     
     @staticmethod
+    def _ensure_schema(conn, cursor):
+        """
+        确保所需的数据表与字段已存在：
+        - users.avatar_url 列
+        - avatar_files 表
+        """
+        try:
+            # 确保 users 表存在 avatar_url 列
+            cursor.execute('PRAGMA table_info(users)')
+            columns = [row[1] for row in cursor.fetchall()]
+            if 'avatar_url' not in columns:
+                cursor.execute('ALTER TABLE users ADD COLUMN avatar_url TEXT')
+                conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+
+        try:
+            # 确保 avatar_files 表存在
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS avatar_files (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    filename TEXT NOT NULL,
+                    original_filename TEXT NOT NULL,
+                    file_size INTEGER NOT NULL,
+                    mime_type TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+                )
+            ''')
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+
+    @staticmethod
     def upload_avatar(user_id, file):
         """
         上传用户头像
@@ -34,6 +71,8 @@ class AvatarService:
         cursor = conn.cursor()
         
         try:
+            # 确保所需表结构存在
+            AvatarService._ensure_schema(conn, cursor)
             # 验证用户是否存在
             cursor.execute('SELECT id FROM users WHERE id = ?', (user_id,))
             if not cursor.fetchone():
@@ -75,8 +114,8 @@ class AvatarService:
             # 删除旧头像
             AvatarService._delete_old_avatar(user_id, cursor)
             
-            # 更新数据库
-            avatar_url = f"/uploads/avatars/{unique_filename}"
+            # 更新数据库（与路由保持一致：蓝图前缀 /api/v1）
+            avatar_url = f"/api/v1/uploads/avatars/{unique_filename}"
             cursor.execute('UPDATE users SET avatar_url = ? WHERE id = ?', (avatar_url, user_id))
             
             # 记录文件信息
@@ -110,6 +149,8 @@ class AvatarService:
         cursor = conn.cursor()
         
         try:
+            # 确保所需表结构存在
+            AvatarService._ensure_schema(conn, cursor)
             cursor.execute('SELECT avatar_url FROM users WHERE id = ?', (user_id,))
             result = cursor.fetchone()
             return result['avatar_url'] if result else None
@@ -131,6 +172,8 @@ class AvatarService:
         cursor = conn.cursor()
         
         try:
+            # 确保所需表结构存在
+            AvatarService._ensure_schema(conn, cursor)
             # 验证用户是否存在
             cursor.execute('SELECT avatar_url FROM users WHERE id = ?', (user_id,))
             result = cursor.fetchone()
@@ -227,6 +270,8 @@ class AvatarService:
         cursor = conn.cursor()
         
         try:
+            # 确保所需表结构存在
+            AvatarService._ensure_schema(conn, cursor)
             cursor.execute('''
                 SELECT u.avatar_url, af.filename, af.original_filename, af.file_size, af.mime_type, af.created_at
                 FROM users u

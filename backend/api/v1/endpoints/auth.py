@@ -35,8 +35,8 @@ def refresh_token():
 @api.route('/auth/logout', methods=['POST'])
 @jwt_required()
 def logout():
-    identity = get_jwt_identity()
-    user_id = identity['id']
+    identity_str = get_jwt_identity()
+    user_id = int(identity_str.split(':')[0])  # 解析用户ID
     
     result = AuthService.logout(user_id)
     return ok_response(result)
@@ -54,8 +54,8 @@ def change_password():
         "new_password": "新密码"
     }
     """
-    identity = get_jwt_identity()
-    user_id = identity['id']
+    identity_str = get_jwt_identity()
+    user_id = int(identity_str.split(':')[0])  # 解析用户ID
     data = request.get_json() or {}
     
     try:

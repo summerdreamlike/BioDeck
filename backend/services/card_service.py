@@ -122,6 +122,45 @@ class CardService:
             'ten_draw_discount': CardService.SINGLE_DRAW_COST * 10 - CardService.TEN_DRAW_COST
         }
     
+    # =============== 稀有度概率配置 ===============
+    @staticmethod
+    def get_rarity_drop_config():
+        """获取稀有度概率配置"""
+        try:
+            config = CardSystem.get_rarity_drop_config()
+            # 返回并补足缺省项
+            defaults = {
+                'common': 0.40,
+                'rare': 0.25,
+                'epic': 0.15,
+                'legendary': 0.05,
+            }
+            merged = {**defaults, **config}
+            total = sum(merged.values())
+            return {
+                'config': merged,
+                'total_rate': total
+            }
+        except Exception as e:
+            raise ApiError(f'获取稀有度概率失败: {str(e)}', code=ErrorCode.OPERATION_FAILED)
+
+    @staticmethod
+    def update_rarity_drop_config(payload):
+        """更新稀有度概率配置"""
+        try:
+            if not isinstance(payload, dict):
+                raise ApiError('参数格式错误', code=ErrorCode.VALIDATION_ERROR)
+            # 允许部分更新
+            CardSystem.update_rarity_drop_config(payload)
+            config = CardSystem.get_rarity_drop_config()
+            return {'config': config, 'total_rate': sum(config.values())}
+        except ApiError:
+            raise
+        except ValueError as e:
+            raise ApiError(str(e), code=ErrorCode.VALIDATION_ERROR)
+        except Exception as e:
+            raise ApiError(f'更新稀有度概率失败: {str(e)}', code=ErrorCode.OPERATION_FAILED)
+    
     @staticmethod
     def _deduct_points(user_id, points):
         """扣除用户积分"""

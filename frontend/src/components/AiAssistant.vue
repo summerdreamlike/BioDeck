@@ -475,29 +475,104 @@ async function sendText(question) {
 }
 
 onMounted(() => {
-  // 读取上次位置，默认右下角
+  // 读取上次位置，默认右下角，并适配不同屏幕尺寸
   try {
     const saved = localStorage.getItem('aiAssistantPos')
     if (saved) {
       const p = JSON.parse(saved)
-      pos.value = { x: p.x || 0, y: p.y || 0 }
+      // 验证保存的位置是否在当前屏幕范围内
+      const vw = window.innerWidth
+      const vh = window.innerHeight
+      const btnSize = 60
+      const margin = 20
+      const maxX = vw - btnSize - margin
+      const maxY = vh - btnSize - margin
+      pos.value = { 
+        x: Math.min(Math.max(margin, p.x || 0), maxX), 
+        y: Math.min(Math.max(margin, p.y || 0), maxY) 
+      }
     } else {
-      pos.value = { x: window.innerWidth - 80, y: window.innerHeight - 90 }
+      // 默认右下角位置，适配不同屏幕
+      const vw = window.innerWidth
+      const vh = window.innerHeight
+      const btnSize = 60
+      const margin = 20
+      pos.value = { 
+        x: vw - btnSize - margin, 
+        y: vh - btnSize - margin 
+      }
     }
   } catch {
-    pos.value = { x: window.innerWidth - 80, y: window.innerHeight - 90 }
+    // 异常情况下的默认位置
+    const vw = window.innerWidth
+    const vh = window.innerHeight
+    const btnSize = 60
+    const margin = 20
+    pos.value = { 
+      x: vw - btnSize - margin, 
+      y: vh - btnSize - margin 
+    }
   }
   try {
     const ss = localStorage.getItem('aiAssistantSize')
     if (ss) {
       const s = JSON.parse(ss)
-      panelSize.value = { w: s.w || 360, h: s.h || Math.round(window.innerHeight * 0.62) }
+      // 适配不同屏幕尺寸的面板大小
+      const vw = window.innerWidth
+      const vh = window.innerHeight
+      const maxW = Math.min(400, vw * 0.9)
+      const maxH = Math.min(vh * 0.8, vh - 100)
+      panelSize.value = { 
+        w: Math.min(s.w || 360, maxW), 
+        h: Math.min(s.h || Math.round(vh * 0.62), maxH) 
+      }
+    } else {
+      // 默认面板大小，适配不同屏幕
+      const vw = window.innerWidth
+      const vh = window.innerHeight
+      const maxW = Math.min(400, vw * 0.9)
+      const maxH = Math.min(vh * 0.8, vh - 100)
+      panelSize.value = { 
+        w: Math.min(360, maxW), 
+        h: Math.min(Math.round(vh * 0.62), maxH) 
+      }
     }
   } catch {
-    panelSize.value = { w: 360, h: Math.round(window.innerHeight * 0.62) }
+    // 异常情况下的默认面板大小
+    const vw = window.innerWidth
+    const vh = window.innerHeight
+    const maxW = Math.min(400, vw * 0.9)
+    const maxH = Math.min(vh * 0.8, vh - 100)
+    panelSize.value = { 
+      w: Math.min(360, maxW), 
+      h: Math.min(Math.round(vh * 0.62), maxH) 
+    }
   }
   scrollToBottom()
   window.addEventListener('resize', placePanel)
+  // 监听窗口大小变化，重新计算位置和大小
+  window.addEventListener('resize', () => {
+    const vw = window.innerWidth
+    const vh = window.innerHeight
+    const btnSize = 60
+    const margin = 20
+    const maxX = vw - btnSize - margin
+    const maxY = vh - btnSize - margin
+    
+    // 确保按钮在可视范围内
+    if (pos.value.x > maxX) pos.value.x = maxX
+    if (pos.value.y > maxY) pos.value.y = maxY
+    if (pos.value.x < margin) pos.value.x = margin
+    if (pos.value.y < margin) pos.value.y = margin
+    
+    // 调整面板大小以适应新屏幕
+    const maxW = Math.min(400, vw * 0.9)
+    const maxH = Math.min(vh * 0.8, vh - 100)
+    if (panelSize.value.w > maxW) panelSize.value.w = maxW
+    if (panelSize.value.h > maxH) panelSize.value.h = maxH
+    
+    placePanel()
+  })
 })
 
 onBeforeUnmount(() => {
@@ -618,7 +693,7 @@ function placePanel(){
 .bubble-img { width: 100%; max-width: 220px; border-radius: 10px; display: block; object-fit: cover; }
 .msg.user .bubble-img { margin-left: auto; }
 .bubble-text { margin-top: 3px; }
-.bubble-text :deep(.q-text) { color: #2386c4e0; font-weight: 600; }
+.bubble-text :deep(.q-text) { color: #ff4242be; font-weight: 600; }
 .bubble-text :deep(.h3-title) { font-weight: 900; font-size: 20px; line-height: 1.35; margin: 6px 0 4px; color: #064e3b; letter-spacing: .2px; }
 .msg.assistant .bubble { background: #f0fdf4; border: 1px solid rgba(16,185,129,.2); color: #065f46; }
 .msg.user .bubble { background: #eff6ff; border: 1px solid rgba(59,130,246,.2); color: #1e40af; }

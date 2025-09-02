@@ -6,13 +6,13 @@
         <img :src="logoImage" alt="logo" class="logo-img">
       </div>
       <div class="user-info">
-        <el-avatar :size="36" class="user-avatar" :src="userAvatar">
+        <el-avatar :size="42" class="user-avatar" :src="navAvatarSrc" :key="navAvatarSrc">
           {{ currentStudentName ? currentStudentName.charAt(0) : 'S' }}
         </el-avatar>
         <el-dropdown @command="handleCommand" class="user-dropdown">
           <span class="dropdown-link">
             {{ currentStudentName || '学生' }}
-            <el-icon><el-icon-arrow-down /></el-icon>
+            <el-icon><el-icon-arrow-down class='arrow-down'/></el-icon>
           </span>
           <template #dropdown>
             <el-dropdown-menu>
@@ -50,7 +50,10 @@ const currentStudentName = computed(() => {
   return user ? (user.name || user.username) : ''
 })
 
-const userAvatar = ref('')
+const navAvatarSrc = computed(() => {
+  const url = userStore.getUserInfo?.avatar_url
+  return url ? `${url}?t=${Date.now()}` : ''
+})
 const logoImage = ref(LogoImage)
 
 const handleCommand = async (command) => {
@@ -98,7 +101,7 @@ onMounted(() => {
 .layout-container { height: 100vh; display: flex; flex-direction: column; }
 
 .header { 
-  background: #fff; border-bottom: 1px solid #e6e6e6; padding: 0 1px; 
+  background: #fff; border-bottom: 1px solid #e6e6e6; 
   display: flex; align-items: center; justify-content: space-between; height: 75px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
@@ -107,10 +110,10 @@ onMounted(() => {
 .logo-img:hover { transform: scale(1.05); }
 
 .user-info { display: flex; align-items: center; gap: 12px; }
-.user-avatar { border: 2px solid #e6e6e6; cursor: pointer; transition: all 0.3s ease; }
-.user-avatar:hover { border-color: #409EFF; transform: scale(1.05); }
+.user-avatar { border: 0.1px solid #e6e6e6; cursor: pointer; transition: all 0.3s ease; }
+.user-avatar:hover { border-color: #c4c1c1; transform: scale(1.05); }
 .user-dropdown { display: flex; align-items: center; }
-.dropdown-link { display: flex; align-items: center; cursor: pointer; color: #333; padding: 8px 12px; border-radius: 6px; transition: all 0.3s ease; user-select: none; outline: none; }
+.dropdown-link { font-size: 15px ;font-weight: 700;display: flex; align-items: center; cursor: pointer; color: #333; padding: 8px 12px; border-radius: 6px; transition: all 0.3s ease; user-select: none; outline: none; }
 .dropdown-link:hover { background-color: #f5f7fa; color: #409EFF; }
 .dropdown-link:focus { outline: none; box-shadow: none; }
 
@@ -121,5 +124,9 @@ onMounted(() => {
   -webkit-backdrop-filter: blur(8px) saturate(120%);
   padding: 0px; 
   overflow: auto; 
+}
+.arrow-down{
+  scale: 1.8;
+  margin-left: 8px;
 }
 </style>

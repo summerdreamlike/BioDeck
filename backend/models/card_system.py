@@ -29,6 +29,14 @@ class CardSystem(BaseModel):
             )
         ''')
         
+        # 稀有度概率配置表（控制各稀有度总体掉落概率）
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS rarity_drop_config (
+                rarity TEXT PRIMARY KEY,
+                rate   REAL NOT NULL
+            )
+        ''')
+        
         # 创建用户卡牌收集表
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS user_cards (
@@ -58,6 +66,8 @@ class CardSystem(BaseModel):
         
         # 初始化默认卡牌
         cls._initialize_default_cards()
+        # 初始化默认稀有度概率
+        cls._initialize_default_rarity_rates()
     
     @classmethod
     def _initialize_default_cards(cls):
@@ -109,6 +119,25 @@ class CardSystem(BaseModel):
         
         conn.commit()
         conn.close()
+
+    @classmethod
+    def _initialize_default_rarity_rates(cls):
+        """初始化默认稀有度概率（若未配置）"""
+        conn = cls.get_db()
+        cursor = conn.cursor()
+        try:
+            cursor.execute('SELECT COUNT(*) FROM rarity_drop_config')
+            if cursor.fetchone()[0] == 0:
+                default_rates = [
+                    ('common', 0.40),
+                    ('rare', 0.25),
+                    ('epic', 0.15),
+                    ('legendary', 0.05)
+                ]
+                cursor.executemany('INSERT INTO rarity_drop_config (rarity, rate) VALUES (?, ?)', default_rates)
+                conn.commit()
+        finally:
+            conn.close()
     
     @classmethod
     def get_all_cards(cls):
@@ -148,28 +177,56 @@ class CardSystem(BaseModel):
         cursor = conn.cursor()
         
         try:
-            # 获取所有卡牌及其掉落率
-            cursor.execute('SELECT * FROM card_definitions')
-            all_cards = [dict(row) for row in cursor.fetchall()]
-            
-            if not all_cards:
-                raise Exception('没有可用的卡牌')
-            
-            # 根据掉落率随机选择卡牌
-            total_rate = sum(card['drop_rate'] for card in all_cards)
-            rand = random.uniform(0, total_rate)
-            
-            selected_card = None
-            current_rate = 0
-            
-            for card in all_cards:
-                current_rate += card['drop_rate']
-                if rand <= current_rate:
-                    selected_card = card
+            # 读取稀有度概率配置
+            cursor.execute('SELECT rarity, rate FROM rarity_drop_config')
+            rarity_rows = cursor.fetchall()
+
+            if rarity_rows:
+                rarity_rates = [(row[0], float(row[1])) for row in rarity_rows]
+            else:
+                # 若未配置，则根据卡牌定义中的drop_rate聚合出稀有度概率
+                cursor.execute('SELECT rarity, SUM(drop_rate) FROM card_definitions GROUP BY rarity')
+                rarity_rates = [(row[0], float(row[1])) for row in cursor.fetchall()]
+
+            if not rarity_rates:
+                raise Exception('未找到稀有度配置或卡牌定义')
+
+            # 先按稀有度概率抽取稀有度
+            total_rarity_rate = sum(rate for _, rate in rarity_rates)
+            if total_rarity_rate <= 0:
+                raise Exception('稀有度概率配置无效')
+
+            rand_rarity = random.uniform(0, total_rarity_rate)
+            chosen_rarity = None
+            acc = 0.0
+            for rarity, rate in rarity_rates:
+                acc += rate
+                if rand_rarity <= acc:
+                    chosen_rarity = rarity
                     break
-            
-            if not selected_card:
-                selected_card = all_cards[-1]  # 保底
+            if not chosen_rarity:
+                chosen_rarity = rarity_rates[-1][0]
+
+            # 在选中的稀有度中选择具体卡牌（按该稀有度下的卡牌drop_rate归一，若无则均匀）
+            cursor.execute('SELECT * FROM card_definitions WHERE rarity = ?', (chosen_rarity,))
+            rarity_cards = [dict(row) for row in cursor.fetchall()]
+            if not rarity_cards:
+                raise Exception(f'所选稀有度无卡牌：{chosen_rarity}')
+
+            per_card_total = sum(card.get('drop_rate') or 0 for card in rarity_cards)
+            if per_card_total and per_card_total > 0:
+                rand_card = random.uniform(0, per_card_total)
+                current = 0.0
+                selected_card = None
+                for card in rarity_cards:
+                    current += card.get('drop_rate') or 0
+                    if rand_card <= current:
+                        selected_card = card
+                        break
+                if not selected_card:
+                    selected_card = rarity_cards[-1]
+            else:
+                selected_card = random.choice(rarity_cards)
             
             # 检查用户是否已有此卡
             cursor.execute('SELECT id FROM user_cards WHERE user_id = ? AND card_id = ?', 
@@ -216,6 +273,46 @@ class CardSystem(BaseModel):
             conn.rollback()
             conn.close()
             raise e
+
+    @classmethod
+    def get_rarity_drop_config(cls):
+        """获取稀有度概率配置"""
+        conn = cls.get_db()
+        cursor = conn.cursor()
+        try:
+            cursor.execute('SELECT rarity, rate FROM rarity_drop_config')
+            rows = cursor.fetchall()
+            config = {row[0]: float(row[1]) for row in rows}
+            return config
+        finally:
+            conn.close()
+
+    @classmethod
+    def update_rarity_drop_config(cls, config):
+        """更新稀有度概率配置。
+        参数示例: { 'common': 0.4, 'rare': 0.25, 'epic': 0.15, 'legendary': 0.05 }
+        """
+        conn = cls.get_db()
+        cursor = conn.cursor()
+        try:
+            # 简单校验
+            allowed = {'common', 'rare', 'epic', 'legendary'}
+            for key in config.keys():
+                if key not in allowed:
+                    raise ValueError(f'未知稀有度: {key}')
+                if config[key] is None or float(config[key]) < 0:
+                    raise ValueError(f'稀有度概率无效: {key}')
+
+            # 覆盖写入
+            for rarity in allowed:
+                if rarity in config:
+                    cursor.execute('REPLACE INTO rarity_drop_config (rarity, rate) VALUES (?, ?)', (rarity, float(config[rarity])))
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
     
     @classmethod
     def get_draw_history(cls, user_id, limit=50):

@@ -172,18 +172,18 @@ class AuthService:
         
         # 验证JWT刷新令牌
         decoded = decode_token(refresh_token_str)
-        identity = decoded['sub']
+        identity_str = decoded['sub']
         
-        # 获取用户信息
-        user_id = identity['id']
-        role = identity['role']
+        # 解析用户信息
+        user_id = int(identity_str.split(':')[0])
+        role = identity_str.split(':')[1]
         user_info = AuthService.get_user_info(user_id, role)
         
         if not user_info:
             raise ApiError('用户不存在', code=ErrorCode.RESOURCE_NOT_FOUND)
         
         # 创建新的访问令牌
-        access_token = create_access_token(identity={'id': user_id, 'role': role})
+        access_token = create_access_token(identity=identity_str)
         
         return {
             'access_token': access_token,
@@ -211,7 +211,8 @@ class AuthService:
         :param role: 用户角色
         :return: 访问令牌和刷新令牌
         """
-        identity = {'id': user_id, 'role': role}
+        # 使用字符串格式的identity，避免"Subject must be a string"错误
+        identity = f"{user_id}:{role}"
         access_token = create_access_token(identity=identity)
         refresh_token = create_refresh_token(identity=identity)
         
@@ -336,12 +337,7 @@ class AuthService:
         if len(password) > 50:
             raise ApiError("密码长度不能超过50位", code=ErrorCode.VALIDATION_ERROR)
         
-        # 检查密码复杂度（至少包含数字和字母）
-        if not re.search(r'\d', password):
-            raise ApiError("密码必须包含至少一个数字", code=ErrorCode.VALIDATION_ERROR)
-        
-        if not re.search(r'[a-zA-Z]', password):
-            raise ApiError("密码必须包含至少一个字母", code=ErrorCode.VALIDATION_ERROR)
+        # 取消复杂度限制（仅保留长度等基础校验）
     
     @staticmethod
     def _log_password_change(user_id):

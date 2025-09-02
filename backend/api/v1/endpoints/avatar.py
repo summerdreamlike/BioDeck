@@ -16,7 +16,8 @@ from services.avatar_service import AvatarService
 @jwt_required()
 def upload_avatar():
     """上传用户头像"""
-    identity = get_jwt_identity()
+    identity_str = get_jwt_identity()
+    user_id = int(identity_str.split(':')[0])  # 解析用户ID
     
     try:
         # 检查是否有文件上传
@@ -26,7 +27,7 @@ def upload_avatar():
         file = request.files['avatar']
         
         # 上传头像
-        avatar_url = AvatarService.upload_avatar(identity['id'], file)
+        avatar_url = AvatarService.upload_avatar(user_id, file)
         
         return ok_response({
             'avatar_url': avatar_url,
@@ -43,7 +44,8 @@ def upload_avatar():
 @jwt_required()
 def get_user_avatar(user_id):
     """获取用户头像"""
-    identity = get_jwt_identity()
+    identity_str = get_jwt_identity()
+    current_user_id = int(identity_str.split(':')[0])  # 解析当前用户ID
     
     try:
         # 获取头像URL
@@ -70,7 +72,8 @@ def get_user_avatar(user_id):
 @jwt_required()
 def get_avatar_info(user_id):
     """获取头像详细信息"""
-    identity = get_jwt_identity()
+    identity_str = get_jwt_identity()
+    current_user_id = int(identity_str.split(':')[0])  # 解析当前用户ID
     
     try:
         # 获取头像信息
@@ -97,11 +100,12 @@ def get_avatar_info(user_id):
 @jwt_required()
 def delete_avatar():
     """删除用户头像"""
-    identity = get_jwt_identity()
+    identity_str = get_jwt_identity()
+    user_id = int(identity_str.split(':')[0])  # 解析用户ID
     
     try:
         # 删除头像
-        AvatarService.delete_avatar(identity['id'])
+        AvatarService.delete_avatar(user_id)
         
         return ok_response({
             'message': '头像删除成功'
@@ -117,7 +121,8 @@ def delete_avatar():
 @jwt_required()
 def update_avatar():
     """更新用户头像"""
-    identity = get_jwt_identity()
+    identity_str = get_jwt_identity()
+    user_id = int(identity_str.split(':')[0])  # 解析用户ID
     
     try:
         # 检查是否有文件上传
@@ -127,7 +132,7 @@ def update_avatar():
         file = request.files['avatar']
         
         # 上传新头像（会自动删除旧头像）
-        avatar_url = AvatarService.upload_avatar(identity['id'], file)
+        avatar_url = AvatarService.upload_avatar(user_id, file)
         
         return ok_response({
             'avatar_url': avatar_url,

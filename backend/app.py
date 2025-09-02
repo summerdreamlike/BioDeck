@@ -23,6 +23,10 @@ from flask_jwt_extended import JWTManager
 app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'dev-secret-change-me')
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)  # 缩短访问令牌有效期
 app.config['JWT_REFRESH_TOKEN_EXPIRES'] = timedelta(days=30)  # 刷新令牌有效期30天
+app.config['JWT_TOKEN_LOCATION'] = ['headers']
+app.config['JWT_HEADER_NAME'] = 'Authorization'
+app.config['JWT_HEADER_TYPE'] = 'Bearer'
+app.config['JWT_ERROR_MESSAGE_KEY'] = 'msg'
 jwt = JWTManager(app)
 
 # 注册数据库连接关闭函数

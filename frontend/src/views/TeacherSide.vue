@@ -7,16 +7,17 @@
       </div>
       <div class="user-info">
         <el-avatar 
-          :size="36" 
+          :size="42" 
           class="user-avatar"
-          :src="userAvatar"
+          :src="navAvatarSrc"
+          :key="navAvatarSrc"
         >
           {{ currentTeacherName ? currentTeacherName.charAt(0) : 'T' }}
         </el-avatar>
         <el-dropdown @command="handleCommand" class="user-dropdown">
           <span class="dropdown-link">
             {{ currentTeacherName || '加载中...' }} 
-            <el-icon><el-icon-arrow-down /></el-icon>
+            <el-icon><el-icon-arrow-down class='arrow-down'/></el-icon>
           </span>
           <template #dropdown>
             <el-dropdown-menu>
@@ -60,7 +61,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed, watchEffect } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '../store'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -75,8 +76,11 @@ const currentTeacherName = computed(() => {
   return user ? user.name : '未知用户'
 })
 
-// 用户头像（可以后续从用户信息中获取）
-const userAvatar = ref('')
+// 顶部导航头像：来自 Pinia 并追加时间戳防缓存
+const navAvatarSrc = computed(() => {
+  const url = userStore.getUserInfo?.avatar_url
+  return url ? `${url}?t=${Date.now()}` : ''
+})
 
 // Logo 图片
 const logoImage = ref(LogoImage)
@@ -224,13 +228,13 @@ onBeforeUnmount(() => {
 }
 
 .user-avatar {
-  border: 2px solid #e6e6e6;
+  border: 0.1px solid #e6e6e6;
   cursor: pointer;
   transition: all 0.3s ease;
 }
 
 .user-avatar:hover {
-  border-color: #409EFF;
+  border-color: #c4c1c1;
   transform: scale(1.05);
 }
 
@@ -240,6 +244,8 @@ onBeforeUnmount(() => {
 }
 
 .dropdown-link { 
+  font-size: 15px;
+  font-weight: 700;
   display: flex; 
   align-items: center; 
   cursor: pointer; 
@@ -306,6 +312,11 @@ onBeforeUnmount(() => {
 
 .backdrop { position: absolute; inset: 60px 0 0 0; background: rgba(0,0,0,.35); opacity: 0; pointer-events: none; transition: opacity .25s ease; }
 .backdrop.show { opacity: 1; pointer-events: auto; }
+
+.arrow-down{
+  scale: 1.8;
+  margin-left: 8px;
+}
 
 /* 修复下拉菜单点击时的黑边框问题 */
 :deep(.el-dropdown-menu__item:focus) {

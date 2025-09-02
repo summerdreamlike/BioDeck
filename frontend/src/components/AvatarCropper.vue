@@ -49,7 +49,14 @@ function draw() {
   const size = cvs.width
   const ctx = ctxRef.value || (ctxRef.value = cvs.getContext('2d'))
   ctx.clearRect(0, 0, size, size)
-  // draw image with pan/zoom
+  
+  // 先绘制半透明遮罩
+  ctx.save()
+  ctx.fillStyle = 'rgba(0,0,0,.4)'
+  ctx.fillRect(0, 0, size, size)
+  ctx.restore()
+  
+  // 绘制图像（不裁剪，完整显示）
   if (image.value) {
     const img = image.value
     const iw = img.width
@@ -60,29 +67,25 @@ function draw() {
     const drawH = ih * s
     const dx = (size - drawW) / 2 + offsetX.value
     const dy = (size - drawH) / 2 + offsetY.value
-    ctx.save()
-    ctx.beginPath()
-    ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2)
-    ctx.closePath()
-    ctx.clip()
     ctx.drawImage(img, dx, dy, drawW, drawH)
-    ctx.restore()
-    // overlay ring
-    ctx.beginPath()
-    ctx.arc(size / 2, size / 2, size / 2 - 1, 0, Math.PI * 2)
-    ctx.strokeStyle = 'rgba(0,0,0,.15)'
-    ctx.lineWidth = 2
-    ctx.stroke()
   }
-  // mask outside circle
+  
+  // 在图像上方绘制圆形遮罩，只保留圆形区域
   ctx.save()
-  ctx.globalCompositeOperation = 'destination-over'
-  ctx.fillStyle = 'rgba(0,0,0,.25)'
-  ctx.fillRect(0, 0, size, size)
-  ctx.globalCompositeOperation = 'destination-out'
+  ctx.globalCompositeOperation = 'destination-in'
   ctx.beginPath()
   ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2)
   ctx.fill()
+  ctx.restore()
+  
+  // 绘制圆形边框
+  ctx.save()
+  ctx.globalCompositeOperation = 'source-over'
+  ctx.beginPath()
+  ctx.arc(size / 2, size / 2, size / 2 - 1, 0, Math.PI * 2)
+  ctx.strokeStyle = 'rgba(0,0,0,.15)'
+  ctx.lineWidth = 2
+  ctx.stroke()
   ctx.restore()
 }
 
@@ -131,25 +134,8 @@ function onDblClick(ev) {
 }
 
 function enforceBounds() {
-  const cvs = canvas.value
-  if (!cvs || !image.value) return
-  const size = cvs.width
-  const r = size / 2
-  const iw = image.value.width
-  const ih = image.value.height
-  const baseScale = Math.max(size / iw, size / ih)
-  const s = baseScale * scale.value
-  const drawW = iw * s
-  const drawH = ih * s
-  let dx = (size - drawW) / 2 + offsetX.value
-  let dy = (size - drawH) / 2 + offsetY.value
-  const minLeft = size / 2 - r // = 0
-  const maxRight = size / 2 + r // = size
-  // ensure image covers circle bounding box fully
-  if (dx > minLeft) { offsetX.value -= (dx - minLeft) }
-  if (dx + drawW < maxRight) { offsetX.value += (maxRight - (dx + drawW)) }
-  if (dy > minLeft) { offsetY.value -= (dy - minLeft) }
-  if (dy + drawH < maxRight) { offsetY.value += (maxRight - (dy + drawH)) }
+  // 移除边界约束，允许图像自由移动
+  // 这样在缩放小于1时不会强制重置位置
 }
 
 watch([scale, imageUrl], () => { enforceBounds(); draw() })

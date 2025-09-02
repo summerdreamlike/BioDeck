@@ -142,12 +142,21 @@ def modify_drop_rate():
     data = request.get_json() or {}
     
     try:
-        # 这里可以实现修改掉落率的逻辑
-        # 暂时返回成功消息
-        return ok_response({
-            'message': '掉落率修改成功',
-            'modification': data
-        })
+        result = CardService.update_rarity_drop_config(data)
+        return ok_response(result, message='稀有度概率已更新')
     except Exception as e:
         api.logger.error(f"修改掉落率失败: {str(e)}")
         raise ApiError('修改掉落率失败', code=ErrorCode.OPERATION_FAILED)
+
+# 查询稀有度掉落概率（管理员功能）
+@api.route('/cards/admin/drop-rate', methods=['GET'])
+@jwt_required()
+@roles_required(['admin'])
+def get_drop_rate():
+    """查询稀有度掉落概率（管理员功能）"""
+    try:
+        result = CardService.get_rarity_drop_config()
+        return ok_response(result)
+    except Exception as e:
+        api.logger.error(f"获取稀有度概率失败: {str(e)}")
+        raise ApiError('获取稀有度概率失败', code=ErrorCode.OPERATION_FAILED)
