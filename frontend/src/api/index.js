@@ -4,10 +4,7 @@ const baseURL = 'http://localhost:5000/api/v1'
 
 const api = axios.create({
   baseURL,
-  timeout: 5000,
-  headers: {
-    'Content-Type': 'application/json'
-  }
+  timeout: 5000
 })
 
 // Request interceptor
@@ -16,6 +13,13 @@ api.interceptors.request.use(
     const token = localStorage.getItem('token')
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`
+    }
+    // 仅在非 FormData 时设置 JSON 头，避免覆盖 multipart 边界
+    if (!(config.data instanceof FormData)) {
+      config.headers['Content-Type'] = 'application/json'
+    } else {
+      // 让浏览器自动设置 multipart 边界
+      delete config.headers['Content-Type']
     }
     return config
   },
@@ -44,6 +48,7 @@ export const authApi = {
   register: (payload) => api.post('/auth/register', payload),
   logout: () => api.post('/auth/logout'),
   refresh: () => api.post('/auth/refresh'),
+  changePassword: (old_password, new_password) => api.put('/auth/change-password', { old_password, new_password })
 }
 
 // Students API
@@ -79,6 +84,14 @@ export const messagesApi = {
   getMessages: () => api.get('/messages'),
   markAsRead: (id) => api.patch(`/messages/${id}`, { read: true }),
   deleteMessage: (id) => api.delete(`/messages/${id}`)
+}
+
+// User/Avatar API
+export const userApi = {
+  // 让 axios 自动设置 multipart 边界，避免 422
+  uploadAvatar: (formData) => api.post('/users/avatar', formData),
+  deleteAvatar: () => api.delete('/users/avatar'),
+  getAvatar: (userId) => api.get(`/users/avatar/${userId}`)
 }
 
 // Tasks API

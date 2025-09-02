@@ -16,7 +16,7 @@ class BiologyQAAdapter:
     def __init__(self):
         self.api_key = os.environ.get('MOONSHOT_API_KEY') or self._load_key_from_file()
         self.model = os.environ.get('BIO_QA_MODEL', 'moonshot-v1-32k')
-        self.vision_model = os.environ.get('BIO_QA_VISION_MODEL', 'moonshot-v1-32k-vision')
+        self.vision_model = os.environ.get('BIO_QA_VISION_MODEL', 'moonshot-v1-32k-vision-preview')
         self.endpoint = os.environ.get('BIO_QA_ENDPOINT', 'https://api.moonshot.cn/v1/chat/completions')
 
     @property
@@ -74,7 +74,8 @@ class BiologyQAAdapter:
             '3. 鼓励学生思考，不直接给出答案，而是引导他们自己得出结论',
             '4. 分步骤解释，确保每个概念都理解透彻',
             '5. 经常使用"你觉得呢？"、"想想看"等引导性语言',
-            '6. 用简单的话说复杂的事，避免过于学术化的表达'
+            '6. 用简单的话说复杂的事，避免过于学术化的表达',
+            '7. 如果用户的问题中包含图片，则需要先分析图片，然后根据图片回答问题'
         ]
         if sims:
             parts.append('以下是相关示例以供参考：')

@@ -18,7 +18,7 @@
             <el-col :span="8">
               <div class="avatar-wrap">
                 <el-avatar :size="96" :src="avatarUrl">{{ initials }}</el-avatar>
-                <div class="avatar-hint">（支持后续完善头像上传）</div>
+                <el-button size="small" @click="openAvatar">上传头像</el-button>
               </div>
             </el-col>
             <el-col :span="16">
@@ -58,7 +58,7 @@
               <div class="sec-head">登录密码</div>
               <div class="sec-sub">建议定期修改密码，保障账号安全</div>
             </div>
-            <el-button size="small" @click="onChangePassword">修改</el-button>
+            <el-button size="small" @click="showPwd = true">修改</el-button>
           </div>
         </el-card>
       </el-col>
@@ -150,12 +150,41 @@
       </el-col>
     </el-row>
   </div>
+  <!-- 修改密码对话框 -->
+  <el-dialog v-model="showPwd" title="修改密码" width="420px">
+    <el-form :model="pwdForm" :rules="pwdRules" ref="pwdFormRef" label-width="96px">
+      <el-form-item label="原密码" prop="old_password">
+        <el-input v-model="pwdForm.old_password" type="password" show-password />
+      </el-form-item>
+      <el-form-item label="新密码" prop="new_password">
+        <el-input v-model="pwdForm.new_password" type="password" show-password />
+      </el-form-item>
+      <el-form-item label="确认新密码" prop="confirm_password">
+        <el-input v-model="pwdForm.confirm_password" type="password" show-password />
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <el-button @click="showPwd=false">取消</el-button>
+      <el-button type="primary" :loading="changing" @click="submitChangePassword(pwdFormRef)">确定</el-button>
+    </template>
+  </el-dialog>
+
+  <!-- 头像裁剪上传对话框 -->
+  <el-dialog v-model="showAvatar" title="上传头像" width="520px">
+    <AvatarCropper :size="280" @cancel="showAvatar=false" @done="onAvatarDone" />
+    <template #footer>
+      <el-button @click="showAvatar=false">关闭</el-button>
+      <el-button type="primary" :loading="uploading" @click="document.querySelector('.cropper-container .file-input')?.click()">选择图片</el-button>
+    </template>
+  </el-dialog>
 </template>
 
 <script setup>
 import { computed, reactive, ref, watchEffect } from 'vue'
 import { useUserStore } from '../store'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { authApi, userApi } from '@/api'
+import AvatarCropper from '@/components/AvatarCropper.vue'
 
 const userStore = useUserStore()
 const user = computed(() => userStore.getUserInfo)
@@ -174,6 +203,22 @@ watchEffect(() => {
 
 const initials = computed(() => (form.name || 'U').slice(0,1))
 const avatarUrl = ref('')
+const showPwd = ref(false)
+const pwdForm = reactive({ old_password: '', new_password: '', confirm_password: '' })
+const pwdFormRef = ref()
+const pwdRules = {
+  old_password: [{ required: true, message: '请输入原密码', trigger: 'blur' }],
+  new_password: [
+    { required: true, message: '请输入新密码', trigger: 'blur' },
+    { min: 6, message: '至少6位', trigger: 'blur' },
+    { validator: (_, v, cb) => (/\d/.test(v) && /[A-Za-z]/.test(v)) ? cb() : cb(new Error('需含字母与数字')), trigger: 'blur' }
+  ],
+  confirm_password: [
+    { required: true, message: '请再次输入新密码', trigger: 'blur' },
+    { validator: (_, v, cb) => v === pwdForm.new_password ? cb() : cb(new Error('两次输入不一致')), trigger: 'blur' }
+  ]
+}
+const changing = ref(false)
 const saving = ref(false)
 
 // 用户画像：根据身份提供不同标志与假数据占位
@@ -196,8 +241,51 @@ function onSave() {
   }, 500)
 }
 
-function onChangePassword() {
-  ElMessage.info('密码修改功能稍后提供')
+async function submitChangePassword(formEl) {
+  if (!formEl) return
+  await formEl.validate(async (valid) => {
+    if (!valid) return
+    try {
+      changing.value = true
+      await authApi.changePassword(pwdForm.old_password, pwdForm.new_password)
+      ElMessage.success('密码修改成功，请重新登录')
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      userStore.logout()
+      window.location.href = '/Login'
+    } catch (e) {
+      ElMessage.error(e?.response?.data?.message || '修改失败')
+    } finally {
+      changing.value = false
+    }
+  })
+}
+
+// avatar
+const showAvatar = ref(false)
+const uploading = ref(false)
+function openAvatar() { showAvatar.value = true }
+async function onAvatarDone(blob) {
+  try {
+    uploading.value = true
+    // 将 Blob 包装为 File，并进行体积校验
+    const file = new File([blob], 'avatar.png', { type: 'image/png' })
+    if (file.size > 10 * 1024 * 1024) {
+      ElMessage.error('图片大小不能超过10MB')
+      uploading.value = false
+      return
+    }
+    const fd = new FormData()
+    fd.append('avatar', file)
+    const res = await userApi.uploadAvatar(fd)
+    avatarUrl.value = res?.data?.avatar_url || avatarUrl.value
+    ElMessage.success('头像更新成功')
+    showAvatar.value = false
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.message || '上传失败')
+  } finally {
+    uploading.value = false
+  }
 }
 </script>
 
@@ -218,7 +306,6 @@ function onChangePassword() {
 .role-tag{ margin-left: 8px; }
 
 .avatar-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; }
-.avatar-hint { font-size: 12px; color: #909399; }
 
 .sec-title { font-weight: 600; }
 .sec-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; }
