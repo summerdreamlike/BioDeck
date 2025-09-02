@@ -15,13 +15,32 @@
       <div class="shelf" ref="shelfRef">
         <div class="shelf-track">
           <div v-for="deck in filteredDecks" :key="deck.id" class="deck" @click="openDeck(deck)">
-            <div class="cover" :style="{ backgroundImage: `url(${deck.cover})` }">
-              <div class="cover-mask"></div>
-              <div class="cover-title">
-                <span class="emoji">{{ deck.emoji }}</span>
-                <span class="name">{{ deck.name }}</span>
-              </div>
-            </div>
+            <InteractiveCard
+              :image-src="deck.cover"
+              :alt-text="deck.name"
+              :gif-src="sparklesGif"
+              :size-mode="'responsive'"
+              :width="'100%'"
+              :aspect-ratio="'3/5'"
+              :border-radius="'16px'"
+              :max-tilt="15"
+              :range-scale="1.4"
+              :hover-scale="1.05"
+              :enable-hover-effect="true"
+              :enable-animation="true"
+              :enable-silver-outline="true"
+              :enable-gif="true"
+            >
+              <template #overlay>
+                <div class="deck-overlay">
+                  <div class="cover-mask"></div>
+                  <div class="cover-title">
+                    <span class="emoji">{{ deck.emoji }}</span>
+                    <span class="name">{{ deck.name }}</span>
+                  </div>
+                </div>
+              </template>
+            </InteractiveCard>
             <div class="book-shadow"></div>
           </div>
         </div>
@@ -38,22 +57,46 @@
       </div>
       <div class="cards-grid">
         <div v-for="card in cards" :key="card.id" class="card" :class="{ locked: !card.unlocked }">
-          <div class="card-cover">
-            <span class="c-emoji">{{ card.emoji }}</span>
-          </div>
-          <div class="card-name">{{ card.name }}</div>
-          <div v-if="!card.unlocked" class="lock">
-            <span class="lock-ico">🔒</span>
-            <span class="lock-text">未解锁</span>
-          </div>
+          <InteractiveCard
+            :image-src="card.cover || ''"
+            :gif-src="sparklesGif"
+            :alt-text="card.name"
+            :size-mode="'fixed'"
+            :width="'140px'"
+            :aspect-ratio="'3/4'"
+            :border-radius="'14px'"
+            :max-tilt="12"
+            :range-scale="1.3"
+            :hover-scale="1.02"
+            :enable-hover-effect="true"
+            :enable-animation="true"
+            :enable-silver-outline="true"
+            :enable-gif="true"
+          >
+            <template #overlay>
+              <div class="card-overlay">
+                <div class="card-cover">
+                  <span class="c-emoji">{{ card.emoji }}</span>
+                </div>
+                <div class="card-name">{{ card.name }}</div>
+                <div v-if="!card.unlocked" class="lock">
+                  <span class="lock-ico">🔒</span>
+                  <span class="lock-text">未解锁</span>
+                </div>
+              </div>
+            </template>
+          </InteractiveCard>
         </div>
       </div>
     </div>
   </div>
+  
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import InteractiveCard from '@/components/InteractiveCard.vue'
+import sparklesGif from '@/assets/gif/sparkles.gif'
 
 const view = ref('shelf')
 const shelfRef = ref(null)
@@ -140,6 +183,7 @@ function openDeck(deck){
     name: `${deck.name} · 卡牌 ${i+1}`,
     emoji: ['🧬','🧫','🧪','🔬','🧲','⚛️','🧯','🧱'][i%8],
     unlocked: i % 3 !== 0,
+    cover: deck.cover // 使用卡组封面作为卡牌背景
   }))
   view.value = 'detail'
 }
@@ -173,12 +217,37 @@ function openDeck(deck){
 .shelf-track::-webkit-scrollbar-thumb{ background: rgba(255,255,255,.18); border-radius: 999px; }
 
 .deck{ position: relative; scroll-snap-align: start; cursor: pointer; }
-.cover{ position: relative; width: 100%; aspect-ratio: 2/3; border-radius: 16px; overflow: hidden;
-  background-size: cover; background-position: center; box-shadow: 0 18px 36px rgba(0,0,0,.35);
-  transform: translateY(0); transition: transform .22s ease, box-shadow .22s ease; }
-.cover-mask{ position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.15), rgba(0,0,0,.45)); }
-.cover-title{ position: absolute; left: 12px; bottom: 10px; right: 12px; display: flex; gap: 8px; align-items: center; color: #f9fafb; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
-.cover:hover{ transform: translateY(-4px); box-shadow: 0 24px 40px rgba(0,0,0,.45); }
+
+/* InteractiveCard overlay 样式 */
+.deck-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  z-index: 10;
+}
+
+.cover-mask{ 
+  position: absolute; 
+  inset: 0; 
+  background: linear-gradient(180deg, rgba(0,0,0,.15), rgba(0,0,0,.45)); 
+  z-index: 1;
+}
+
+.cover-title{ 
+  position: relative;
+  left: 12px; 
+  bottom: 10px; 
+  right: 12px; 
+  display: flex; 
+  gap: 8px; 
+  align-items: center; 
+  color: #f9fafb; 
+  text-shadow: 0 1px 2px rgba(0,0,0,.6);
+  z-index: 2;
+}
+
 .emoji{ font-size: 18px; }
 .name{ font-weight: 700; }
 .book-shadow{ height: 10px; margin: 8px 12px 0; border-radius: 999px; background: radial-gradient(60% 100% at 50% -10%, rgba(0,0,0,.35), rgba(0,0,0,0)); filter: blur(2px); }
@@ -191,15 +260,61 @@ function openDeck(deck){
 .title{ display: inline-flex; gap: 8px; align-items: center; font-weight: 700; color: #f9fafb; }
 
 .cards-grid{ display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 14px; }
-.card{ position: relative; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.10); border-radius: 14px; overflow: hidden; padding: 10px; color: #e5e7eb;
-  box-shadow: 0 8px 20px rgba(0,0,0,.25); transition: transform .18s ease, box-shadow .18s ease, background .18s ease; }
-.card:hover{ transform: translateY(-2px); box-shadow: 0 14px 28px rgba(0,0,0,.30); background: rgba(255,255,255,.06); }
-.card-cover{ height: 120px; display: flex; align-items: center; justify-content: center; background: radial-gradient(50% 60% at 50% 35%, rgba(255,255,255,.08), rgba(255,255,255,0)); border-radius: 10px; margin-bottom: 8px; }
+
+/* InteractiveCard overlay 样式 */
+.card-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.card-cover{ 
+  height: 120px; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  background: radial-gradient(50% 60% at 50% 35%, rgba(255,255,255,.08), rgba(255,255,255,0)); 
+  border-radius: 10px; 
+  margin-bottom: 8px; 
+}
+
 .c-emoji{ font-size: 40px; filter: drop-shadow(0 4px 8px rgba(0,0,0,.3)); }
 .card-name{ font-size: 13px; color: #cbd5e1; text-align: center; }
-.lock{ position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; background: rgba(15,23,42,.58); }
+
+.lock{ 
+  position: absolute; 
+  inset: 0; 
+  display: flex; 
+  flex-direction: column; 
+  align-items: center; 
+  justify-content: center; 
+  gap: 6px; 
+  background: rgba(15,23,42,.58);
+  z-index: 20;
+}
+
 .lock-ico{ font-size: 20px; }
 .lock-text{ font-size: 12px; color: #94a3b8; }
+
+/* 移除旧的卡片样式，因为现在使用InteractiveCard */
+.card { 
+  position: relative; 
+  background: transparent; 
+  border: none; 
+  padding: 0; 
+  box-shadow: none; 
+}
+
+.card:hover { 
+  transform: none; 
+  box-shadow: none; 
+  background: transparent; 
+}
+
 .card.locked .card-cover{ filter: grayscale(40%); opacity: .7; }
 
 @media (max-width: 640px){

@@ -10,8 +10,10 @@ scripts/
 ├── README.md               # 本说明文档
 ├── init_user_profile.py    # 用户画像功能初始化脚本
 ├── init_auth_update.py     # 认证系统更新初始化脚本
+├── init_avatar.py          # 头像功能初始化脚本
 ├── test_user_profile.py    # 用户画像功能测试脚本
 ├── test_auth_update.py     # 认证系统更新测试脚本
+├── test_avatar.py          # 头像功能测试脚本
 ├── export_db.py            # 导出 SQLite 为 dump.sql
 └── import_db.py            # 导入 dump.sql 到 database.db
 ```
@@ -39,6 +41,16 @@ scripts/
   - 优化数据库索引
   - 支持多种登录方式
 
+#### `init_avatar.py`
+
+- **作用**: 初始化头像功能，创建必要的数据库表和目录
+- **运行方式**: `python scripts/init_avatar.py`
+- **功能**:
+  - 添加avatar_url字段到users表
+  - 创建avatar_files表记录文件信息
+  - 创建头像存储目录
+  - 设置相关索引
+
 ### 测试脚本
 
 #### `test_user_profile.py`
@@ -60,6 +72,16 @@ scripts/
   - 多种方式登录
   - 自动班级分配
 
+#### `test_avatar.py`
+
+- **作用**: 测试头像相关API功能
+- **运行方式**: `python scripts/test_avatar.py`
+- **测试内容**:
+  - 获取头像URL
+  - 获取头像详细信息
+  - 删除头像
+  - 创建测试图片
+
 ## 使用流程
 
 1. **初始化系统**:
@@ -70,6 +92,9 @@ scripts/
 
    # 初始化用户画像功能
    python scripts/init_user_profile.py
+   
+   # 初始化头像功能
+   python scripts/init_avatar.py
    ```
 
 2. **启动后端服务**:
@@ -86,6 +111,9 @@ scripts/
 
    # 测试用户画像功能
    python scripts/test_user_profile.py
+   
+   # 测试头像功能
+   python scripts/test_avatar.py
    ```
 
 4. **导出/导入数据库**:

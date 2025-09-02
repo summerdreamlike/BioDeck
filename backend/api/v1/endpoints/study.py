@@ -102,17 +102,16 @@ def submit_practice_result(student_id):
     
     try:
         # 验证必填字段
-        required_fields = ['question_id', 'is_correct']
+        required_fields = ['knowledge_point', 'is_correct']
         missing_fields = [field for field in required_fields if field not in data]
         if missing_fields:
             raise ApiError(f"缺少必填字段: {', '.join(missing_fields)}", code=ErrorCode.VALIDATION_ERROR)
         
         # 提交练习结果
-        question_id = data['question_id']
+        knowledge_point = data['knowledge_point']
         is_correct = data['is_correct']
-        knowledge_point = data.get('knowledge_point')
         
-        practice_id = StudyService.submit_practice_result(student_id, question_id, is_correct, knowledge_point)
+        practice_id = StudyService.submit_practice_result(student_id, knowledge_point, is_correct)
         return ok_response({'id': practice_id, 'message': '练习结果提交成功'})
     except ApiError:
         raise

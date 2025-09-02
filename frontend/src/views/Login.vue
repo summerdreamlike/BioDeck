@@ -9,15 +9,17 @@
           <h2 class="head-title">欢迎登录</h2>
         </div>
       </div>
-      <el-form :model="form" :rules="rules" ref="formRef" label-width="90px" class="form" @submit.prevent="onSubmit">
+      <el-form :model="form" :rules="rules" ref="formRef" label-width="90px" :class="['form', mode]" @submit.prevent="onSubmit">
         <!-- 仅注册时需要角色选择 -->
         <el-form-item v-if="mode==='register'" label="角色" prop="role">
           <div class="role-toggle">
             <button type="button" :class="['role-btn', { active: form.role==='student' }]" @click="form.role='student'">
-              <ElIconReading class="i" /> 学生
+              <ElIconReading class="i" />
+              <span>学生</span>
             </button>
             <button type="button" :class="['role-btn', { active: form.role==='teacher' }]" @click="form.role='teacher'">
-              <ElIconUser class="i" /> 老师
+              <ElIconUser class="i" />
+              <span>老师</span>
             </button>
           </div>
         </el-form-item>
@@ -86,6 +88,21 @@
         <el-button class="submit_link" link @click="toggleMode">{{ mode==='login' ? '没有账号？去注册' : '已有账号？去登录' }}</el-button>
       </div>
     </el-card>
+    
+    <!-- 右下角装饰小方块 -->
+    <div class="decorative-squares">
+      <div class="square square-1"></div>
+      <div class="square square-2"></div>
+      <div class="square square-3"></div>
+    </div>
+    
+    <!-- 启动界面风格的装饰元素 -->
+    <div class="splash-decorations">
+      <div class="decorative-circle circle-1"></div>
+      <div class="decorative-circle circle-2"></div>
+      <div class="decorative-circle circle-3"></div>
+      <div class="decorative-circle circle-4"></div>
+    </div>
   </section>
 </template>
 
@@ -243,38 +260,69 @@ function redirectByRole(role, replace = false) {
 <style scoped>
 :root { --ease-smooth: cubic-bezier(.2,.8,.2,1); }
 
-.auth-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(180deg, #ecfdf5 0%, #ffffff 100%); padding: 24px; position: relative; overflow: hidden; }
-.auth-page::before, .auth-page::after { content: ''; position: absolute; border-radius: 50%; filter: blur(30px); opacity: .18; pointer-events: none; }
-.auth-page::before { width: 420px; height: 420px; top: -120px; left: -120px; background: radial-gradient(circle at 30% 30%, #34d399, transparent 60%); }
-.auth-page::after  { width: 520px; height: 520px; right: -160px; bottom: -160px; background: radial-gradient(circle at 70% 70%, #a7f3d0, transparent 60%); }
+.auth-page { 
+  min-height: 100vh; 
+  display: flex; 
+  align-items: flex-end; 
+  justify-content: center; 
+  background: linear-gradient(180deg, rgba(236, 253, 245, 0.3) 0%, rgba(255, 255, 255, 0.3) 100%), url('@/assets/img/background.png') center center no-repeat;
+  background-size: 98vw 110vh;
+  padding: 0px 24px 60px; 
+  position: relative; 
+  overflow: hidden; 
+}
 
 .auth-page.enter { animation: slideUp .5s var(--ease-smooth) both; }
-.auth-card { width: 100%; max-width: 380px; border: 1px solid rgba(16,185,129,.16); border-radius: 16px; box-shadow: 0 12px 28px rgba(16,185,129,.12), 0 6px 14px rgba(0,0,0,.06); transition: box-shadow .3s var(--ease-smooth); position: relative; }
+.auth-card { 
+  width: 100%; 
+  max-width: 480px; 
+  height: 480px;
+  border: 1px solid rgba(77, 77, 77, 0.3); 
+  border-radius: 20px; 
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 16px 40px rgba(52, 211, 153, 0.15), 0 8px 20px rgba(0,0,0,0.1); 
+  transition: box-shadow .3s var(--ease-smooth); 
+  position: relative; 
+  bottom: 80px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  padding: 28px;
+}
 /* 取消悬停时 body 视觉移动：不再整体上浮 */
-.auth-card:hover { box-shadow: 0 16px 32px rgba(16,185,129,.14), 0 8px 18px rgba(0,0,0,.08); }
+.auth-card:hover { 
+  box-shadow: 0 20px 50px rgba(52, 211, 153, 0.2), 0 12px 30px rgba(0,0,0,0.15); 
+}
 
 /* Header visuals */
-.card-head { display: flex; align-items: center; gap: 12px; margin: 8px 8px 4px; padding: 8px; border-radius: 12px; background: linear-gradient(180deg, rgba(16,185,129,.06), rgba(16,185,129,.03)); }
+.card-head { display: flex; align-items: center; gap: 14px; margin: 0 0 24px; padding: 18px; border-radius: 14px; background: linear-gradient(180deg, rgba(16,185,129,.08), rgba(16,185,129,.04)); }
 .emblem { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: linear-gradient(135deg, #10b981, #34d399); color: #fff; box-shadow: 0 8px 18px rgba(16,185,129,.25); }
 .emblem-icon { font-size: 22px; }
 .head-text { display: flex; flex-direction: column; }
 .head-title { margin: 0; font-size: 18px; font-weight: 700; color: #065f46; }
 .head-sub { margin: 2px 0 0; font-size: 12px; color: #047857; opacity: .8; }
 
-.tabs { display: flex; justify-content: center; margin-bottom: 16px; }
-.form { margin-top: 8px; }
-.actions:deep(.el-form-item__content) { display: flex; justify-content: center; gap: 14px; width: 100%; }
+.tabs { display: flex; justify-content: center; margin-bottom: 24px; }
+.form { margin-top: 20px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+.actions:deep(.el-form-item__content) { display: flex; justify-content: center; gap: 14px; width: 100%; margin-top: 24px; }
 
 /* 角色二选一按钮 */
-.role-toggle { display: inline-flex; gap: 10px; }
-.role-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 999px; border: 1px solid rgba(16,185,129,.22); background: #fff; color: #065f46; transition: transform .18s var(--ease-smooth), box-shadow .18s var(--ease-smooth), border-color .18s var(--ease-smooth); }
-.role-btn .i { margin-right: 2px; }
+.role-toggle { display: flex; gap: 12px; justify-content: center; width: 100%; }
+.role-btn { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 20px; border-radius: 999px; border: 1px solid rgba(16,185,129,.22); background: #fff; color: #065f46; transition: transform .18s var(--ease-smooth), box-shadow .18s var(--ease-smooth), border-color .18s var(--ease-smooth); min-width: 110px; height: 40px; }
+.role-btn .i { margin-right: 0; font-size: 14px; }
+.role-btn span { font-size: 15px; font-weight: 500; width: 100%;}
 .role-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 14px rgba(16,185,129,.16); }
 .role-btn.active { background: linear-gradient(135deg,#10b981,#34d399); color: #fff; border-color: transparent; box-shadow: 0 8px 16px rgba(16,185,129,.22); }
 
-/* Input focus look */
-.form :deep(.el-input__wrapper) { border-radius: 12px; transition: box-shadow .24s var(--ease-smooth), transform .24s var(--ease-smooth); }
+  /* Input focus look */
+  .form :deep(.el-form-item) { margin-bottom: 23px; }
+  /* 登录时增加输入框间距，与下方小字产生合理间距 */
+  .form.login :deep(.el-form-item) { margin-bottom: 10px; padding-top: 23px; }
+  .form :deep(.el-input__wrapper) { border-radius: 12px; transition: box-shadow .24s var(--ease-smooth), transform .24s var(--ease-smooth); height: 42px; }
 .form :deep(.el-input__wrapper.is-focus), .form :deep(.el-input.is-focus .el-input__wrapper) { box-shadow: 0 0 0 3px rgba(16,185,129,.15) inset, 0 0 0 2px rgba(16,185,129,.18); transform: translateZ(0); }
+.form :deep(.el-input__inner) { font-size: 14px; }
+.form :deep(.el-form-item__label) { font-weight: 500; color: #065f46; font-size: 14px; line-height: 1.4; }
 .ipfx { color: rgba(6,95,70,.8); }
 
 /* Primary button width/color transitions */
@@ -286,13 +334,13 @@ function redirectByRole(role, replace = false) {
 .primary-btn.error { background-image: none; background-color: #ef4444; width: 100%; }
 
 /* Spinner */
-.spinner { display: inline-flex; align-items: center; gap: 6px; }
+.spinner { display: inline-flex; align-items: center; gap: 6px;}
 .spin { animation: tgs 0.9s linear infinite; }
 @keyframes tgs { to { transform: rotate(360deg); } }
 
 @keyframes slideUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
 .fadeOut { from { opacity: 1; transform: scale(1); filter: blur(0); } to { opacity: 0; transform: scale(.98); filter: blur(2px); } }
-.switch-br { position: absolute; right: 16px; bottom: 12px; }
+.switch-br { position: absolute; right: 18px; bottom: 14px; }
 .submit_link { font-size: 12px; }
 
 .fade-enter-active, .fade-leave-active { transition: opacity .2s var(--ease-smooth); }
@@ -319,4 +367,70 @@ function redirectByRole(role, replace = false) {
 .form.error-shake { animation: shake .42s var(--ease-smooth); }
 @keyframes shake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-6px); } 40% { transform: translateX(6px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(4px); } }
 .form :deep(.is-error .el-input__wrapper) { box-shadow: 0 0 0 3px rgba(239,68,68,.18) inset, 0 0 0 2px rgba(239,68,68,.22); }
+
+/* 右下角装饰小方块 */
+.decorative-squares {
+  position: fixed;
+  bottom: 40px;
+  right: 40px;
+  display: flex;
+  gap: 8px;
+  z-index: 5;
+}
+
+.square {
+  width: 12px;
+  height: 12px;
+  background: linear-gradient(135deg, #10b981, #34d399);
+  border-radius: 3px;
+  opacity: 0;
+  transform: translateY(20px) rotate(45deg);
+  animation: squareAppear 0.8s ease-out forwards;
+}
+
+.square-1 {
+  animation-delay: 0.2s;
+}
+
+.square-2 {
+  animation-delay: 0.4s;
+}
+
+.square-3 {
+  animation-delay: 0.6s;
+}
+
+@keyframes squareAppear {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) rotate(45deg) scale(0.5);
+  }
+  50% {
+    opacity: 0.8;
+    transform: translateY(-5px) rotate(45deg) scale(1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) rotate(45deg) scale(1);
+  }
+}
+
+/* 悬停效果 */
+.square:hover {
+  transform: translateY(-3px) rotate(45deg) scale(1.2);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+  transition: all 0.3s ease;
+}
+
+@media (max-width: 640px){
+  .decorative-squares {
+    bottom: 30px;
+    right: 30px;
+  }
+  
+  .square {
+    width: 10px;
+    height: 10px;
+  }
+}
 </style>

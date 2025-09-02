@@ -10,16 +10,13 @@ api = Blueprint('api', __name__, url_prefix='/api/v1')
 from .endpoints import (
     auth,
     students,
-    questions,
     study,
-    papers,
-    classroom,
     materials,
     messages,
-    attendance,
-    tasks,
-    feedbacks,
-    user_profile
+    user_profile,
+    avatar,
+    daily_checkin,
+    cards
     # 以下模块尚未创建，暂时注释掉
     # categories,
     # tags

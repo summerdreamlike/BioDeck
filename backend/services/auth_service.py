@@ -6,6 +6,7 @@
 from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import create_access_token, create_refresh_token, decode_token
+import re
 
 from core.helpers import db_fetch_one, db_execute, db_insert
 from core.errors import ApiError, ErrorCode
@@ -246,7 +247,8 @@ class AuthService:
         user_info = {
             'id': user_dict['id'],
             'name': user_dict['name'],
-            'role': user_dict['role']
+            'role': user_dict['role'],
+            'avatar_url': user_dict.get('avatar_url')
         }
         
         if user_dict['role'] == 'student':
@@ -258,3 +260,115 @@ class AuthService:
             user_info['class_number'] = user_dict.get('class_number')
         
         return user_info 
+
+    @staticmethod
+    def change_password(user_id, old_password, new_password):
+        """
+        修改用户密码
+        
+        :param user_id: 用户ID
+        :param old_password: 旧密码
+        :param new_password: 新密码
+        :return: 修改成功消息
+        """
+        # 验证新密码格式
+        AuthService._validate_password_format(new_password)
+        
+        # 获取用户信息
+        user = db_fetch_one('SELECT * FROM users WHERE id = ?', (user_id,))
+        if not user:
+            raise ApiError("用户不存在", code=ErrorCode.RESOURCE_NOT_FOUND)
+        
+        # 验证旧密码
+        old_password_ok = False
+        try:
+            old_password_ok = check_password_hash(user['password'], old_password)
+        except Exception:
+            # 兼容旧系统明文密码
+            old_password_ok = (user['password'] == old_password)
+        
+        if not old_password_ok:
+            raise ApiError("旧密码错误", code=ErrorCode.INVALID_CREDENTIALS)
+        
+        # 检查新密码是否与旧密码相同
+        if old_password == new_password:
+            raise ApiError("新密码不能与旧密码相同", code=ErrorCode.VALIDATION_ERROR)
+        
+        # 加密新密码
+        hashed_new_password = generate_password_hash(new_password)
+        
+        # 更新密码
+        db_execute(
+            'UPDATE users SET password = ? WHERE id = ?',
+            (hashed_new_password, user_id),
+            commit=True
+        )
+        
+        # 清除用户的所有刷新令牌，强制重新登录
+        db_execute(
+            'DELETE FROM refresh_tokens WHERE user_id = ?',
+            (user_id,),
+            commit=True
+        )
+        
+        # 记录密码修改日志（可选）
+        AuthService._log_password_change(user_id)
+        
+        return {
+            'message': '密码修改成功，请重新登录',
+            'user_id': user_id
+        }
+    
+    @staticmethod
+    def _validate_password_format(password):
+        """
+        验证密码格式
+        
+        :param password: 密码
+        :raises: ApiError 如果密码格式不符合要求
+        """
+        if not password:
+            raise ApiError("密码不能为空", code=ErrorCode.VALIDATION_ERROR)
+        
+        if len(password) < 6:
+            raise ApiError("密码长度不能少于6位", code=ErrorCode.VALIDATION_ERROR)
+        
+        if len(password) > 50:
+            raise ApiError("密码长度不能超过50位", code=ErrorCode.VALIDATION_ERROR)
+        
+        # 检查密码复杂度（至少包含数字和字母）
+        if not re.search(r'\d', password):
+            raise ApiError("密码必须包含至少一个数字", code=ErrorCode.VALIDATION_ERROR)
+        
+        if not re.search(r'[a-zA-Z]', password):
+            raise ApiError("密码必须包含至少一个字母", code=ErrorCode.VALIDATION_ERROR)
+    
+    @staticmethod
+    def _log_password_change(user_id):
+        """
+        记录密码修改日志
+        
+        :param user_id: 用户ID
+        """
+        try:
+            # 创建密码修改日志表（如果不存在）
+            db_execute('''
+                CREATE TABLE IF NOT EXISTS password_change_logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    ip_address TEXT,
+                    user_agent TEXT,
+                    FOREIGN KEY (user_id) REFERENCES users (id)
+                )
+            ''', commit=True)
+            
+            # 插入日志记录
+            db_execute(
+                'INSERT INTO password_change_logs (user_id) VALUES (?)',
+                (user_id,),
+                commit=True
+            )
+        except Exception as e:
+            # 日志记录失败不影响主要功能
+            print(f"密码修改日志记录失败: {str(e)}") 

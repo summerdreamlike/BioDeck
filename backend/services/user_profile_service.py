@@ -1,6 +1,6 @@
 from models.user_profile import UserProfile
 from models.study import StudyData
-from models.attendance import Attendance
+from models.daily_checkin import DailyCheckin
 from models.material import Material
 from models.user import User
 import sqlite3

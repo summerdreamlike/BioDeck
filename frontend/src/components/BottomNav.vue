@@ -68,29 +68,91 @@ function isActive(path){
 .nav-item{
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   height: 100%; border: none; background: transparent; color: #1f2937; cursor: pointer;
-  border-radius: 12px; transition: all .18s ease; outline: none; padding: 0 8px;
+  border-radius: 12px; transition: all .3s cubic-bezier(0.4, 0, 0.2, 1); outline: none; padding: 0 8px;
   transform: translateY(0) scale(1);
+  position: relative;
+  overflow: hidden;
 }
+
+.nav-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  transition: left 0.5s;
+}
+
+.nav-item:hover::before {
+  left: 100%;
+}
+
 .nav-item:hover{ 
-  background: rgba(255,255,255,0.18); 
-  transform: translateY(0) scale(1); 
+  background: rgba(255,255,255,0.25); 
+  transform: translateY(-2px) scale(1.05); 
+  box-shadow: 0 8px 25px rgba(0,0,0,0.15);
 }
+
 .nav-item.active{ 
-  background: rgba(64,158,255,0.18); 
+  background: rgba(64,158,255,0.25); 
   color: #1677ff; 
+  transform: translateY(-1px) scale(1.02);
+  box-shadow: 0 4px 15px rgba(64,158,255,0.3);
+}
+
+.nav-item.active:hover {
+  background: rgba(64,158,255,0.35);
+  transform: translateY(-3px) scale(1.07);
+  box-shadow: 0 12px 30px rgba(64,158,255,0.4);
 }
 
 .icon{ 
   font-size: 18px;
   line-height: 1;
+  transition: all .3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: scale(1);
 }
+
+.nav-item:hover .icon {
+  transform: scale(1.3);
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.2));
+}
+
+.nav-item.active .icon {
+  transform: scale(1.1);
+  filter: drop-shadow(0 2px 8px rgba(64,158,255,0.3));
+}
+
+.nav-item.active:hover .icon {
+  transform: scale(1.4);
+  filter: drop-shadow(0 4px 12px rgba(64,158,255,0.5));
+}
+
 .label{ 
   font-size: 14px;
   font-weight: 600; 
   opacity: 1; 
   transform: translateY(0); 
-  transition: all .2s ease; 
+  transition: all .3s cubic-bezier(0.4, 0, 0.2, 1); 
   white-space: nowrap; 
+}
+
+.nav-item:hover .label {
+  transform: translateY(-2px);
+  color: #1677ff;
+  text-shadow: 0 2px 4px rgba(22,119,255,0.2);
+}
+
+.nav-item.active .label {
+  transform: translateY(-1px);
+  text-shadow: 0 1px 3px rgba(64,158,255,0.3);
+}
+
+.nav-item.active:hover .label {
+  transform: translateY(-3px);
+  text-shadow: 0 2px 6px rgba(64,158,255,0.4);
 }
 
 /* 直接显示：按钮常显 */
@@ -98,27 +160,6 @@ function isActive(path){
 
 @media (max-width: 640px){
   .nav-wrap{ width: 88vw; min-width: 0; }
-}
-
-button::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 100%;
-    width: 0;
-    height: 100%;
-    border-bottom: 4px solid #2789d9;
-    transition: 0.25s all linear;
-    border-radius: 4px;
-}
-
-button:hover::before {
-    width: 100%;
-    left: 0;
-}
-
-button:hover ~ button::before {
-    left: 0;
 }
 </style>
 

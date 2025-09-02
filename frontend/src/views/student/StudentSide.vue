@@ -88,9 +88,9 @@ onMounted(() => {
     }
   }
   const token = localStorage.getItem('token')
-  // if (!userStore.getUserInfo || !token) {
-  //   router.push('/Login')
-  // }
+  if (!userStore.getUserInfo || !token) {
+    router.push('/Login')
+  }
 })
 </script>
 

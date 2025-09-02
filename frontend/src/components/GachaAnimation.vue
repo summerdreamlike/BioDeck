@@ -14,9 +14,18 @@
           <div v-for="i in count" :key="i" 
                class="card" 
                :class="{ 'fly-in': stage >= 2, 'flip': stage >= 3 }"
-               :style="{ '--delay': `${i * 0.1}s` }">
+               :style="{ '--delay': `${i * (props.count === 10 ? 0.02 : 0.04)}s` }">
             <div class="card-back"></div>
-            <div class="card-front"></div>
+            <div class="card-front">
+              <!-- 卡片正面显示结果 -->
+              <div class="card-content" v-if="results[i-1]">
+                <div class="rarity" :class="`rarity-${results[i-1].rarity.toLowerCase()}`">
+                  {{ results[i-1].rarity }}
+                </div>
+                <div class="name">{{ results[i-1].name }}</div>
+                <div class="glow-effect" v-if="results[i-1].glow"></div>
+              </div>
+            </div>
           </div>
         </div>
         
@@ -24,14 +33,11 @@
         <div class="effects">
           <div class="light-burst" :class="{ 'active': stage >= 4 }"></div>
           <div class="particles" :class="{ 'active': stage >= 4 }">
-            <span v-for="i in 20" :key="i" :style="{ '--delay': `${i * 0.05}s` }"></span>
+            <span v-for="i in 12" :key="i" :style="{ '--delay': `${i * 0.03}s` }"></span>
           </div>
         </div>
         
-        <!-- 进度条 -->
-        <div class="progress" :class="{ 'show': stage >= 1 }">
-          <div class="bar" :style="{ width: `${progress}%` }"></div>
-        </div>
+
       </div>
     </div>
   </transition>
@@ -40,6 +46,7 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 
+/* global defineProps, defineEmits */
 const props = defineProps({
   count: { type: Number, default: 1 }
 })
@@ -47,7 +54,7 @@ const emit = defineEmits(['complete'])
 
 const visible = ref(true)
 const stage = ref(0)
-const progress = ref(0)
+const results = ref([])
 let animationTimer = null
 
 // 模拟抽卡结果
@@ -73,35 +80,36 @@ async function simulateGacha() {
     results.push({ ...base, id: `${Date.now()}-${i}`, glow: base.rarity === 'SSR' || base.rarity === 'SR' })
   }
   
-  return new Promise(resolve => setTimeout(() => resolve(results), 800))
+  return new Promise(resolve => setTimeout(() => resolve(results), 100))
 }
 
 function startAnimation() {
   let currentStage = 0
+  
   const stages = [
-    { duration: 800, progress: 20 },   // 标题出现
-    { duration: 1200, progress: 40 },  // 卡片飞入
-    { duration: 1000, progress: 60 },  // 卡片翻转
-    { duration: 1500, progress: 80 },  // 光效爆发
-    { duration: 1000, progress: 100 }  // 完成
+    { duration: 500 },   // 标题出现
+    { duration: props.count === 10 ? 800 : 600 },   // 卡片飞入
+    { duration: 500 },   // 卡片翻转
+    { duration: 500 }    // 光效爆发
   ]
+  
+  // 预先获取抽卡结果，避免动画过程中的阻塞
+  simulateGacha().then(gachaResults => {
+    results.value = gachaResults
+  }).catch(error => {
+    console.error('抽卡失败:', error)
+    results.value = []
+  })
   
   stages.forEach((stageInfo, index) => {
     setTimeout(() => {
       currentStage = index + 1
       stage.value = currentStage
-      progress.value = stageInfo.progress
       
-      if (currentStage === 5) {
+      if (currentStage === 4) {
         // 动画完成，触发抽卡
-        setTimeout(async () => {
-          try {
-            const results = await simulateGacha()
-            emit('complete', results)
-          } catch (error) {
-            console.error('抽卡失败:', error)
-            emit('complete', [])
-          }
+        setTimeout(() => {
+          emit('complete', results.value)
         }, 500)
       }
     }, stages.slice(0, index).reduce((acc, s) => acc + s.duration, 0))
@@ -154,7 +162,7 @@ onBeforeUnmount(() => {
   text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
   opacity: 0;
   transform: translateY(30px);
-  transition: all 0.8s cubic-bezier(0.22, 0.61, 0.36, 1);
+  transition: all 0.45s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 .title.show {
@@ -169,17 +177,25 @@ onBeforeUnmount(() => {
   gap: 20px;
   flex-wrap: wrap;
   justify-content: center;
-  max-width: 600px;
+  max-width: 800px;
+  /* 十抽时优化性能 */
+  will-change: transform;
+  transform: translateZ(0);
 }
 
+
+
 .card {
-  width: 80px;
-  height: 120px;
+  width: 120px;
+  height: 160px;
   position: relative;
   transform-style: preserve-3d;
   transform: translateY(100vh) rotateY(0deg);
-  transition: all 0.8s cubic-bezier(0.22, 0.61, 0.36, 1);
+  transition: all 0.45s cubic-bezier(0.22, 0.61, 0.36, 1);
   transition-delay: var(--delay, 0s);
+  /* 十抽时优化性能 */
+  will-change: transform;
+  backface-visibility: hidden;
 }
 
 .card.fly-in {
@@ -199,8 +215,7 @@ onBeforeUnmount(() => {
 }
 
 .card-back {
-  /* 使用塔罗牌背面图片 */
-  background: center/cover no-repeat url('@/assets/img/Decks/塔罗牌背面.jpg');
+  background: center/cover no-repeat url('@/assets/img/Decks/background.png');
   border: 2px solid rgba(255, 255, 255, 0.35);
 }
 
@@ -208,6 +223,44 @@ onBeforeUnmount(() => {
   background: linear-gradient(145deg, #ffffff, #f8fafc);
   border: 2px solid rgba(255, 255, 255, 0.3);
   transform: rotateY(180deg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+}
+
+.card-content {
+  text-align: center;
+  width: 100%;
+}
+
+.rarity {
+  font-weight: 800;
+  font-size: 14px;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.rarity-n { color: #b5c0d0; }
+.rarity-r { color: #6dd5ed; }
+.rarity-sr { color: #a770ef; }
+.rarity-ssr { color: #fdbb2d; }
+
+.name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #2b2f36;
+  line-height: 1.2;
+}
+
+.glow-effect {
+  position: absolute;
+  inset: -4px;
+  border-radius: 12px;
+  background: radial-gradient(80% 80% at 50% 50%, rgba(255,255,255,.6), rgba(255,255,255,0));
+  filter: blur(6px);
+  opacity: 0.8;
+  pointer-events: none;
 }
 
 .effects {
@@ -225,7 +278,7 @@ onBeforeUnmount(() => {
   border-radius: 50%;
   background: radial-gradient(circle, rgba(255, 255, 255, 0.8), transparent);
   transform: translate(-50%, -50%);
-  transition: all 1.5s ease-out;
+  transition: all 0.45s ease-out;
 }
 
 .light-burst.active {
@@ -241,12 +294,12 @@ onBeforeUnmount(() => {
 
 .particles span {
   position: absolute;
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: white;
   opacity: 0;
-  animation: particleFloat 2s ease-out infinite;
+  animation: particleFloat 1.5s ease-out infinite;
   animation-delay: var(--delay, 0s);
 }
 
@@ -260,38 +313,15 @@ onBeforeUnmount(() => {
     opacity: 1;
   }
   100% {
-    transform: translate(var(--x, 100px), var(--y, -100px)) scale(1);
+    transform: translate(var(--x, 80px), var(--y, -80px)) scale(1);
     opacity: 0;
   }
 }
 
-.progress {
-  position: absolute;
-  bottom: 80px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 300px;
-  height: 6px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 3px;
-  overflow: hidden;
-  opacity: 0;
-  transition: opacity 0.5s ease;
-}
 
-.progress.show {
-  opacity: 1;
-}
-
-.progress .bar {
-  height: 100%;
-  background: linear-gradient(90deg, #74ebd5, #9face6);
-  border-radius: 3px;
-  transition: width 0.3s ease;
-}
 
 .fade-enter-active, .fade-leave-active {
-  transition: opacity 0.5s ease;
+  transition: opacity 0.3s ease;
 }
 
 .fade-enter-from, .fade-leave-to {
@@ -299,31 +329,22 @@ onBeforeUnmount(() => {
 }
 
 /* 为粒子设置随机位置 */
-.particles span:nth-child(1) { --x: 120px; --y: -80px; left: 20%; top: 60%; }
-.particles span:nth-child(2) { --x: -100px; --y: -120px; left: 80%; top: 40%; }
-.particles span:nth-child(3) { --x: 80px; --y: 100px; left: 30%; top: 80%; }
-.particles span:nth-child(4) { --x: -120px; --y: 80px; left: 70%; top: 20%; }
-.particles span:nth-child(5) { --x: 60px; --y: -100px; left: 40%; top: 50%; }
-.particles span:nth-child(6) { --x: -80px; --y: -60px; left: 60%; top: 30%; }
-.particles span:nth-child(7) { --x: 100px; --y: 120px; left: 25%; top: 70%; }
-.particles span:nth-child(8) { --x: -60px; --y: 100px; left: 75%; top: 10%; }
-.particles span:nth-child(9) { --x: 90px; --y: -80px; left: 35%; top: 45%; }
-.particles span:nth-child(10) { --x: -90px; --y: -100px; left: 65%; top: 35%; }
-.particles span:nth-child(11) { --x: 70px; --y: 90px; left: 45%; top: 75%; }
-.particles span:nth-child(12) { --x: -70px; --y: 80px; left: 55%; top: 15%; }
-.particles span:nth-child(13) { --x: 110px; --y: -70px; left: 15%; top: 55%; }
-.particles span:nth-child(14) { --x: -110px; --y: -90px; left: 85%; top: 25%; }
-.particles span:nth-child(15) { --x: 50px; --y: 110px; left: 50%; top: 85%; }
-.particles span:nth-child(16) { --x: -50px; --y: 70px; left: 10%; top: 25%; }
-.particles span:nth-child(17) { --x: 80px; --y: -60px; left: 90%; top: 65%; }
-.particles span:nth-child(18) { --x: -80px; --y: 90px; left: 20%; top: 85%; }
-.particles span:nth-child(19) { --x: 60px; --y: -110px; left: 80%; top: 15%; }
-.particles span:nth-child(20) { --x: -60px; --y: 60px; left: 30%; top: 95%; }
+.particles span:nth-child(1) { --x: 100px; --y: -60px; left: 20%; top: 60%; }
+.particles span:nth-child(2) { --x: -80px; --y: -100px; left: 80%; top: 40%; }
+.particles span:nth-child(3) { --x: 60px; --y: 80px; left: 30%; top: 80%; }
+.particles span:nth-child(4) { --x: -100px; --y: 60px; left: 70%; top: 20%; }
+.particles span:nth-child(5) { --x: 50px; --y: -80px; left: 40%; top: 50%; }
+.particles span:nth-child(6) { --x: -60px; --y: -50px; left: 60%; top: 30%; }
+.particles span:nth-child(7) { --x: 80px; --y: 100px; left: 25%; top: 70%; }
+.particles span:nth-child(8) { --x: -50px; --y: 80px; left: 75%; top: 10%; }
+.particles span:nth-child(9) { --x: 70px; --y: -60px; left: 35%; top: 45%; }
+.particles span:nth-child(10) { --x: -70px; --y: -80px; left: 65%; top: 35%; }
+.particles span:nth-child(11) { --x: 60px; --y: 70px; left: 45%; top: 75%; }
+.particles span:nth-child(12) { --x: -60px; --y: 60px; left: 55%; top: 15%; }
 
 @media (max-width: 768px) {
   .title { font-size: 32px; }
   .cards-container { gap: 12px; }
-  .card { width: 60px; height: 90px; }
-  .progress { width: 250px; bottom: 60px; }
+  .card { width: 80px; height: 120px; }
 }
 </style>

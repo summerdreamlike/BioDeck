@@ -66,7 +66,15 @@ class BiologyQAAdapter:
             if len(sims) >= 2:
                 break
         parts = [
-            '你是一名专业的高中生物老师，请条理清晰地回答问题，必要时分点作答。',
+            '你是一位经验丰富的高中生物老师，专门负责线上教学。你采用费曼学习法来引导学生学习，即用简单易懂的语言解释复杂概念，通过提问和引导帮助学生自己发现答案。',
+            '',
+            '你的教学风格：',
+            '1. 亲切友好，像朋友一样与学生交流',
+            '2. 使用生动的比喻和日常生活中的例子',
+            '3. 鼓励学生思考，不直接给出答案，而是引导他们自己得出结论',
+            '4. 分步骤解释，确保每个概念都理解透彻',
+            '5. 经常使用"你觉得呢？"、"想想看"等引导性语言',
+            '6. 用简单的话说复杂的事，避免过于学术化的表达'
         ]
         if sims:
             parts.append('以下是相关示例以供参考：')
@@ -81,7 +89,7 @@ class BiologyQAAdapter:
             for h in history[-4:]:
                 parts.append(f"{h.get('role','user')}: {h.get('content','')}")
         parts.append(f"现在的问题：{question}")
-        parts.append('请给出准确、简练、条理清晰的回答，并强调关键概念与因果机制。')
+        parts.append('请以生物老师的身份，用费曼学习法来回答这个问题。记住要亲切、引导性强，帮助学生真正理解概念。')
         return '\n'.join(parts)
 
     def _call_llm(self, system_prompt: str, user_content):
@@ -107,7 +115,7 @@ class BiologyQAAdapter:
     def ask(self, question: str, history: list) -> str:
         if not self.ready:
             return '未配置模型 API Key（MOONSHOT_API_KEY），已使用内置示例回答。'
-        system_prompt = '你是生物学问答助手。'
+        system_prompt = '你是一位经验丰富的高中生物老师，专门负责线上教学。你采用费曼学习法来引导学生学习，用简单易懂的语言解释复杂概念，通过提问和引导帮助学生自己发现答案。你的语气亲切友好，像朋友一样与学生交流。回答时要分点罗列，使用数字编号（1. 2. 3. 等），让回答结构清晰易懂。采用渐进式问答方式：不要一次性说完所有内容，而是分步骤引导学生思考，每个回答只讲1-2个要点，然后通过提问引导学生继续探索。回答内容要包含：先肯定学生的提问，用简单的话解释核心概念，举一个生活中的例子，引导学生思考相关问题，鼓励学生提出更多问题。但不要使用" 肯定学生的提问："这样的提示语，直接自然地表达内容。'
         prompt = self._build_prompt(question, history)
         return self._call_llm(system_prompt, prompt)
 
@@ -122,12 +130,12 @@ class BiologyQAAdapter:
             b64 = base64.b64encode(f.read()).decode('utf-8')
         user_content = [
             { 'type': 'image_url', 'image_url': { 'url': f'data:image/png;base64,{b64}' } },
-            { 'type': 'text', 'text': f'这是一个生物学问题，请解答：{question}。请分点作答。' }
+            { 'type': 'text', 'text': f'这是一个生物学问题：{question}。请以生物老师的身份，用费曼学习法来解答这个问题。用简单易懂的语言解释，举生活中的例子，并引导学生思考。' }
         ]
         payload = {
             'model': self.vision_model,
             'messages': [
-                { 'role': 'system', 'content': '你是生物学图像问答助手。' },
+                { 'role': 'system', 'content': '你是一位经验丰富的高中生物老师，专门负责线上教学。你采用费曼学习法来引导学生学习，用简单易懂的语言解释复杂概念。当看到生物学相关的图片时，你会用亲切友好的语气，通过生动的比喻和引导性问题来帮助学生理解图片中的生物学概念。回答时要分点罗列，使用数字编号（1. 2. 3. 等），让回答结构清晰易懂。采用渐进式问答方式：不要一次性说完所有内容，而是分步骤引导学生思考，每个回答只讲1-2个要点，然后通过提问引导学生继续探索。回答内容要包含：先肯定学生的提问，用简单的话解释核心概念，举一个生活中的例子，引导学生思考相关问题，鼓励学生提出更多问题。但不要使用"1. 肯定学生的提问："这样的提示语，直接自然地表达内容。' },
                 { 'role': 'user', 'content': user_content }
             ],
             'temperature': 0.7,

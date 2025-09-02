@@ -488,14 +488,7 @@ CREATE TABLE courses (
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (teacher_id) REFERENCES users (id)
     );
-CREATE TABLE feedbacks (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        student_id INTEGER NOT NULL,
-        content TEXT NOT NULL,
-        satisfaction INTEGER NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (student_id) REFERENCES students (id)
-    );
+
 CREATE TABLE material_tags (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         material_id INTEGER NOT NULL,

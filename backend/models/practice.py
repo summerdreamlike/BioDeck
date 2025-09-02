@@ -4,7 +4,7 @@ from .base import BaseModel
 
 class Practice(BaseModel):
     @classmethod
-    def submit(cls, student_id, question_id, is_correct, knowledge_point=None, submitted_at=None):
+    def submit(cls, student_id, knowledge_point, is_correct, submitted_at=None):
         conn = cls.get_db()
         cursor = conn.cursor()
         if not submitted_at:
@@ -13,18 +13,16 @@ class Practice(BaseModel):
             CREATE TABLE IF NOT EXISTS practices (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 student_id INTEGER NOT NULL,
-                question_id INTEGER NOT NULL,
+                knowledge_point TEXT NOT NULL,
                 is_correct INTEGER NOT NULL,
-                knowledge_point TEXT,
                 submitted_at TIMESTAMP NOT NULL,
-                FOREIGN KEY (student_id) REFERENCES students (id),
-                FOREIGN KEY (question_id) REFERENCES questions (id)
+                FOREIGN KEY (student_id) REFERENCES students (id)
             )
         ''')
         cursor.execute('''
-            INSERT INTO practices (student_id, question_id, is_correct, knowledge_point, submitted_at)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (student_id, question_id, 1 if is_correct else 0, knowledge_point, submitted_at))
+            INSERT INTO practices (student_id, knowledge_point, is_correct, submitted_at)
+            VALUES (?, ?, ?, ?)
+        ''', (student_id, knowledge_point, 1 if is_correct else 0, submitted_at))
         new_id = cursor.lastrowid
         conn.commit()
         conn.close()
@@ -55,22 +53,21 @@ class Practice(BaseModel):
 
 class WrongBook(BaseModel):
     @classmethod
-    def add(cls, student_id, question_id, knowledge_point=None):
+    def add(cls, student_id, knowledge_point):
         conn = cls.get_db()
         cursor = conn.cursor()
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS wrong_book (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 student_id INTEGER NOT NULL,
-                question_id INTEGER NOT NULL,
-                knowledge_point TEXT,
+                knowledge_point TEXT NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE(student_id, question_id)
+                UNIQUE(student_id, knowledge_point)
             )
         ''')
         try:
-            cursor.execute('INSERT INTO wrong_book (student_id, question_id, knowledge_point) VALUES (?, ?, ?)',
-                           (student_id, question_id, knowledge_point))
+            cursor.execute('INSERT INTO wrong_book (student_id, knowledge_point) VALUES (?, ?)',
+                           (student_id, knowledge_point))
             conn.commit()
         except Exception:
             pass
@@ -85,9 +82,8 @@ class WrongBook(BaseModel):
         cursor.execute('SELECT COUNT(*) FROM wrong_book WHERE student_id = ?', (student_id,))
         total = cursor.fetchone()[0]
         cursor.execute('''
-            SELECT wb.id, wb.knowledge_point, wb.created_at, q.*
+            SELECT wb.id, wb.knowledge_point, wb.created_at
             FROM wrong_book wb
-            JOIN questions q ON wb.question_id = q.id
             WHERE wb.student_id = ?
             ORDER BY wb.created_at DESC
             LIMIT ? OFFSET ?

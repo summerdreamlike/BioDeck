@@ -41,6 +41,44 @@ def logout():
     result = AuthService.logout(user_id)
     return ok_response(result)
 
+# 修改密码端点
+@api.route('/auth/change-password', methods=['PUT'])
+@jwt_required()
+def change_password():
+    """
+    修改用户密码
+    
+    请求体:
+    {
+        "old_password": "旧密码",
+        "new_password": "新密码"
+    }
+    """
+    identity = get_jwt_identity()
+    user_id = identity['id']
+    data = request.get_json() or {}
+    
+    try:
+        # 验证必填字段
+        required_fields = ['old_password', 'new_password']
+        missing_fields = [field for field in required_fields if not data.get(field)]
+        if missing_fields:
+            raise ApiError(f"缺少必填字段: {', '.join(missing_fields)}", code=ErrorCode.VALIDATION_ERROR)
+        
+        old_password = data.get('old_password')
+        new_password = data.get('new_password')
+        
+        # 调用服务层修改密码
+        result = AuthService.change_password(user_id, old_password, new_password)
+        
+        return ok_response(result)
+    except ApiError:
+        raise
+    except Exception as e:
+        api.logger.error(f"修改密码失败: {str(e)}")
+        api.logger.error(traceback.format_exc())
+        raise ApiError("修改密码失败", code=ErrorCode.OPERATION_FAILED)
+
 # 统一注册接口
 @api.route('/auth/register', methods=['POST'])
 def register_user():

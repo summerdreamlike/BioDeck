@@ -240,14 +240,13 @@ class StudyService:
             conn.close()
     
     @staticmethod
-    def submit_practice_result(student_id, question_id, is_correct, knowledge_point=None):
+    def submit_practice_result(student_id, knowledge_point, is_correct):
         """
         提交练习题结果
         
         :param student_id: 学生ID
-        :param question_id: 题目ID
-        :param is_correct: 是否正确
         :param knowledge_point: 知识点
+        :param is_correct: 是否正确
         :return: 结果ID
         """
         conn = get_db()
@@ -259,27 +258,19 @@ class StudyService:
             if not cursor.fetchone():
                 raise ApiError('学生不存在', code=ErrorCode.RESOURCE_NOT_FOUND)
             
-            # 验证题目是否存在
-            cursor.execute('SELECT id, knowledge_point FROM questions WHERE id = ?', (question_id,))
-            question = cursor.fetchone()
-            if not question:
-                raise ApiError('题目不存在', code=ErrorCode.RESOURCE_NOT_FOUND)
-            
-            # 如果未提供知识点，则使用题目的知识点
-            if not knowledge_point and question:
-                knowledge_point = question['knowledge_point']
+            # 如果没有提供知识点，使用默认值
+            if not knowledge_point:
+                knowledge_point = '综合'
             
             # 创建practices表（如果不存在）
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS practices (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     student_id INTEGER NOT NULL,
-                    question_id INTEGER NOT NULL,
+                    knowledge_point TEXT NOT NULL,
                     is_correct INTEGER NOT NULL,
-                    knowledge_point TEXT,
                     submitted_at TIMESTAMP NOT NULL,
-                    FOREIGN KEY (student_id) REFERENCES users (id),
-                    FOREIGN KEY (question_id) REFERENCES questions (id)
+                    FOREIGN KEY (student_id) REFERENCES users (id)
                 )
             ''')
             
@@ -287,9 +278,9 @@ class StudyService:
             submitted_at = now()
             cursor.execute('''
                 INSERT INTO practices 
-                (student_id, question_id, is_correct, knowledge_point, submitted_at)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (student_id, question_id, 1 if is_correct else 0, knowledge_point, submitted_at))
+                (student_id, knowledge_point, is_correct, submitted_at)
+                VALUES (?, ?, ?, ?)
+            ''', (student_id, knowledge_point, 1 if is_correct else 0, submitted_at))
             
             practice_id = cursor.lastrowid
             
@@ -300,19 +291,18 @@ class StudyService:
                     CREATE TABLE IF NOT EXISTS wrong_book (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         student_id INTEGER NOT NULL,
-                        question_id INTEGER NOT NULL,
-                        knowledge_point TEXT,
+                        knowledge_point TEXT NOT NULL,
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        UNIQUE(student_id, question_id)
+                        UNIQUE(student_id, knowledge_point)
                     )
                 ''')
                 
                 try:
                     cursor.execute('''
                         INSERT INTO wrong_book 
-                        (student_id, question_id, knowledge_point) 
-                        VALUES (?, ?, ?)
-                    ''', (student_id, question_id, knowledge_point))
+                        (student_id, knowledge_point) 
+                        VALUES (?, ?)
+                    ''', (student_id, knowledge_point))
                 except:
                     # 忽略唯一性约束错误（可能已经在错题本中）
                     pass
@@ -355,9 +345,8 @@ class StudyService:
             # 分页查询
             offset = (page - 1) * page_size
             cursor.execute('''
-                SELECT wb.id, wb.knowledge_point, wb.created_at, q.*
+                SELECT wb.id, wb.knowledge_point, wb.created_at
                 FROM wrong_book wb
-                JOIN questions q ON wb.question_id = q.id
                 WHERE wb.student_id = ?
                 ORDER BY wb.created_at DESC
                 LIMIT ? OFFSET ?

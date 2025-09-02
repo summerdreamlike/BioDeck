@@ -25,7 +25,7 @@
         <div class="panel-header">
           <div class="ttl">
             <svg viewBox="0 0 24 24" class="bot sm"><path fill="currentColor" d="M12 2a1 1 0 0 1 1 1v1.055A7.002 7.002 0 0 1 19 11v4a5 5 0 0 1-5 5h-4a5 5 0 0 1-5-5v-4a7.002 7.002 0 0 1 6-6.945V3a1 1 0 0 1 1-1Z"/></svg>
-            生物 AI 助手
+            卡盒先生
           </div>
           <button class="close" @click="toggle">×</button>
         </div>
@@ -44,14 +44,18 @@
             </div>
           </div>
           <div class="composer" role="region" aria-label="输入区">
-            <textarea
-              v-model="input"
-              class="ipt ta"
-              :placeholder="loading ? '' : ''"
-              rows="1"
-              @keydown.enter.prevent="onEnter"
-            />
-            <button class="send" :disabled="!input || loading" @click="send">发送</button>
+            <div class="composer-input">
+              <textarea
+                v-model="input"
+                class="ipt ta"
+                :placeholder="loading ? '' : '输入你的问题...'"
+                rows="1"
+                @keydown.enter.prevent="onEnter"
+              />
+              <div class="composer-actions">
+                <button class="send" :disabled="!input || loading" @click="send">发送</button>
+              </div>
+            </div>
           </div>
         </div>
         <div class="resizer" :class="handleCorner" @mousedown.prevent="onResizeDown" @touchstart.prevent="onResizeDown" />
@@ -80,7 +84,7 @@ let moved = false
 const input = ref('')
 const loading = ref(false)
 const messages = ref([
-  { role: 'assistant', content: '你好，我是生物 AI 助手。可以问我细胞、遗传、生态等问题～' }
+  { role: 'assistant', content: '你好啊！我是你是卡盒先生，有什么生物问题快来问我吧' }
 ])
 const scrollRef = ref(null)
 const panelRef = ref(null)
@@ -232,10 +236,17 @@ function onEnter(e){
   send()
 }
 
+
+
 async function send(){
   if (!input.value || loading.value) return
+  
   const question = input.value.trim()
   input.value = ''
+  await sendText(question)
+}
+
+async function sendText(question) {
   messages.value.push({ role: 'user', content: question })
   loading.value = true
   const pendingIdx = messages.value.push({ role: 'assistant', content: '思考中…', loading: true }) - 1
@@ -350,6 +361,24 @@ function placePanel(){
   const rightSide = px >= cx
   const bottomSide = py >= cy
   handleCorner.value = (bottomSide ? 'b' : 't') + (rightSide ? 'r' : 'l')
+
+  // 确保FAB按钮位置在可视范围内
+  const margin = 20
+  if (pos.value.x + btnSize > vw - margin) {
+    pos.value.x = vw - btnSize - margin
+  }
+  if (pos.value.y + btnSize > vh - margin) {
+    pos.value.y = vh - btnSize - margin
+  }
+  if (pos.value.x < margin) {
+    pos.value.x = margin
+  }
+  if (pos.value.y < margin) {
+    pos.value.y = margin
+  }
+  
+  // 保存调整后的位置到localStorage
+  localStorage.setItem('aiAssistantPos', JSON.stringify(pos.value))
 }
 </script>
 
@@ -383,12 +412,19 @@ function placePanel(){
 .msg.assistant .bubble { background: #f0fdf4; border: 1px solid rgba(16,185,129,.2); color: #065f46; }
 .msg.user .bubble { background: #eff6ff; border: 1px solid rgba(59,130,246,.2); color: #1e40af; }
 
-.composer { display: flex; gap: 8px; padding: 10px; border-top: 1px solid rgba(16,185,129,.12); background: #fff; }
+.composer { display: flex; flex-direction: column; gap: 8px; padding: 10px; border-top: 1px solid rgba(16,185,129,.12); background: #fff; }
+
+.composer-input { display: flex; gap: 8px; }
 .ipt { flex: 1; border-radius: 12px; border: 1px solid #e5e7eb; padding: 3px 12px; outline: none; transition: box-shadow .2s ease, border-color .2s ease; }
 .ipt.ta {  max-height: 120px; resize: none; line-height: 1.4; }
 .ipt:focus { border-color: #34d399; box-shadow: 0 0 0 3px rgba(16,185,129,.12); }
-.send { height: 30px; padding: 0 14px; border-radius: 12px; border: none; background: linear-gradient(135deg,#10b981,#34d399); color: #fff; font-weight: 700; cursor: pointer; box-shadow: 0 8px 16px rgba(16,185,129,.24); }
+
+.composer-actions { display: flex; gap: 6px; align-items: center; }
+
+.send { height: 32px; padding: 0 16px; border-radius: 12px; border: none; background: linear-gradient(135deg,#10b981,#34d399); color: #fff; font-weight: 700; cursor: pointer; box-shadow: 0 8px 16px rgba(16,185,129,.24); }
 .send:disabled { opacity: .6; cursor: not-allowed; box-shadow: none; }
+
+
 
 /* Loading 动画（圆形旋转） */
 .loading-spinner { display: inline-block; width: 14px; height: 14px; margin-left: 8px; border-radius: 50%; border: 2px solid rgba(6,95,70,.22); border-top-color: rgba(16,185,129,.9); animation: spin 0.8s linear infinite; vertical-align: -2px; }
