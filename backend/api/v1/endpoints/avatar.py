@@ -1,7 +1,7 @@
 """
 头像相关路由
 """
-from flask import request, jsonify, send_from_directory
+from flask import request, jsonify, send_from_directory, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 import os
 
@@ -16,18 +16,27 @@ from services.avatar_service import AvatarService
 @jwt_required()
 def upload_avatar():
     """上传用户头像"""
-    identity_str = get_jwt_identity()
-    user_id = int(identity_str.split(':')[0])  # 解析用户ID
-    
     try:
+        identity_str = get_jwt_identity()
+        user_id = int(identity_str.split(':')[0])  # 解析用户ID
+        current_app.logger.info(f"用户 {user_id} 开始上传头像")
+        
         # 检查是否有文件上传
         if 'avatar' not in request.files:
+            current_app.logger.error("请求中没有找到avatar文件")
             raise ApiError('未选择头像文件', code=ErrorCode.VALIDATION_ERROR)
         
         file = request.files['avatar']
+        current_app.logger.info(f"接收到文件: {file.filename}, 大小: {file.content_length if hasattr(file, 'content_length') else '未知'}")
+        
+        # 检查文件对象
+        if not file or file.filename == '':
+            current_app.logger.error("文件对象无效或文件名为空")
+            raise ApiError('文件无效', code=ErrorCode.VALIDATION_ERROR)
         
         # 上传头像
         avatar_url = AvatarService.upload_avatar(user_id, file)
+        current_app.logger.info(f"头像上传成功: {avatar_url}")
         
         return ok_response({
             'avatar_url': avatar_url,
@@ -36,7 +45,9 @@ def upload_avatar():
     except ApiError:
         raise
     except Exception as e:
-        api.logger.error(f"上传头像失败: {str(e)}")
+        current_app.logger.error(f"上传头像失败: {str(e)}")
+        import traceback
+        current_app.logger.error(f"详细错误: {traceback.format_exc()}")
         raise ApiError('上传头像失败', code=ErrorCode.OPERATION_FAILED)
 
 # 获取用户头像
@@ -64,7 +75,7 @@ def get_user_avatar(user_id):
     except ApiError:
         raise
     except Exception as e:
-        api.logger.error(f"获取头像失败: {str(e)}")
+        current_app.logger.error(f"获取头像失败: {str(e)}")
         raise ApiError('获取头像失败', code=ErrorCode.OPERATION_FAILED)
 
 # 获取头像详细信息
@@ -92,7 +103,7 @@ def get_avatar_info(user_id):
     except ApiError:
         raise
     except Exception as e:
-        api.logger.error(f"获取头像信息失败: {str(e)}")
+        current_app.logger.error(f"获取头像信息失败: {str(e)}")
         raise ApiError('获取头像信息失败', code=ErrorCode.OPERATION_FAILED)
 
 # 删除头像
@@ -113,7 +124,7 @@ def delete_avatar():
     except ApiError:
         raise
     except Exception as e:
-        api.logger.error(f"删除头像失败: {str(e)}")
+        current_app.logger.error(f"删除头像失败: {str(e)}")
         raise ApiError('删除头像失败', code=ErrorCode.OPERATION_FAILED)
 
 # 更新头像（实际上是重新上传）
@@ -141,7 +152,7 @@ def update_avatar():
     except ApiError:
         raise
     except Exception as e:
-        api.logger.error(f"更新头像失败: {str(e)}")
+        current_app.logger.error(f"更新头像失败: {str(e)}")
         raise ApiError('更新头像失败', code=ErrorCode.OPERATION_FAILED)
 
 # 静态文件服务 - 提供头像文件访问
@@ -152,5 +163,5 @@ def serve_avatar(filename):
         avatar_dir = AvatarService.AVATAR_DIR
         return send_from_directory(avatar_dir, filename)
     except Exception as e:
-        api.logger.error(f"访问头像文件失败: {str(e)}")
+        current_app.logger.error(f"访问头像文件失败: {str(e)}")
         raise ApiError('头像文件不存在', code=ErrorCode.RESOURCE_NOT_FOUND)

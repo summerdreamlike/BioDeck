@@ -1,7 +1,7 @@
 """
 卡牌抽奖相关路由
 """
-from flask import request, jsonify
+from flask import request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
 from ..api import api
@@ -10,6 +10,27 @@ from core.responses import ok_response
 from core.auth import role_required, roles_required
 from services.card_service import CardService
 import traceback
+
+def parse_user_identity(identity):
+    """解析用户身份信息，从字符串格式 'user_id:role' 中提取用户ID"""
+    if isinstance(identity, str) and ':' in identity:
+        parts = identity.split(':')
+        # 确保有两个部分且都不为空
+        if len(parts) == 2 and parts[0].strip() and parts[1].strip():
+            try:
+                user_id = int(parts[0])
+                user_role = parts[1]
+                current_app.logger.info(f"解析用户ID: {user_id}, 角色: {user_role}")
+                return user_id
+            except (ValueError, IndexError) as e:
+                current_app.logger.error(f"解析用户身份信息失败: {str(e)}")
+                raise ApiError('无效的用户身份信息格式', code=ErrorCode.INVALID_PARAMETER)
+        else:
+            current_app.logger.error(f"用户身份信息格式不完整: {identity}")
+            raise ApiError('用户身份信息格式不完整', code=ErrorCode.INVALID_PARAMETER)
+    else:
+        current_app.logger.error(f"无效的用户身份信息格式: {identity}")
+        raise ApiError('无效的用户身份信息格式', code=ErrorCode.INVALID_PARAMETER)
 
 # ================== 卡牌收集相关路由 ==================
 
@@ -24,13 +45,14 @@ def get_user_collection():
         # 确保数据库表存在
         CardService.ensure_tables()
         
-        result = CardService.get_user_collection(identity['id'])
+        user_id = parse_user_identity(identity)
+        result = CardService.get_user_collection(user_id)
         return ok_response(result)
     except ApiError:
         raise
     except Exception as e:
-        api.logger.error(f"获取卡牌收集失败: {str(e)}")
-        api.logger.error(traceback.format_exc())
+        current_app.logger.error(f"获取卡牌收集失败: {str(e)}")
+        current_app.logger.error(traceback.format_exc())
         raise ApiError('获取卡牌收集失败', code=ErrorCode.OPERATION_FAILED)
 
 # 获取所有卡牌定义
@@ -44,7 +66,7 @@ def get_all_cards():
     except ApiError:
         raise
     except Exception as e:
-        api.logger.error(f"获取卡牌列表失败: {str(e)}")
+        current_app.logger.error(f"获取卡牌列表失败: {str(e)}")
         raise ApiError('获取卡牌列表失败', code=ErrorCode.OPERATION_FAILED)
 
 # ================== 抽奖相关路由 ==================
@@ -57,13 +79,14 @@ def single_draw():
     identity = get_jwt_identity()
     
     try:
-        result = CardService.single_draw(identity['id'])
+        user_id = parse_user_identity(identity)
+        result = CardService.single_draw(user_id)
         return ok_response(result, message='抽卡成功！')
     except ApiError:
         raise
     except Exception as e:
-        api.logger.error(f"单抽失败: {str(e)}")
-        api.logger.error(traceback.format_exc())
+        current_app.logger.error(f"单抽失败: {str(e)}")
+        current_app.logger.error(traceback.format_exc())
         raise ApiError('单抽失败', code=ErrorCode.OPERATION_FAILED)
 
 # 十连抽
@@ -74,13 +97,14 @@ def ten_draw():
     identity = get_jwt_identity()
     
     try:
-        result = CardService.ten_draw(identity['id'])
+        user_id = parse_user_identity(identity)
+        result = CardService.ten_draw(user_id)
         return ok_response(result, message='十连抽成功！')
     except ApiError:
         raise
     except Exception as e:
-        api.logger.error(f"十连抽失败: {str(e)}")
-        api.logger.error(traceback.format_exc())
+        current_app.logger.error(f"十连抽失败: {str(e)}")
+        current_app.logger.error(traceback.format_exc())
         raise ApiError('十连抽失败', code=ErrorCode.OPERATION_FAILED)
 
 # 获取抽奖历史
@@ -92,13 +116,65 @@ def get_draw_history():
     limit = request.args.get('limit', 50, type=int)
     
     try:
-        result = CardService.get_draw_history(identity['id'], limit)
+        user_id = parse_user_identity(identity)
+        result = CardService.get_draw_history(user_id, limit)
         return ok_response(result)
     except ApiError:
         raise
     except Exception as e:
-        api.logger.error(f"获取抽奖历史失败: {str(e)}")
+        current_app.logger.error(f"获取抽奖历史失败: {str(e)}")
         raise ApiError('获取抽奖历史失败', code=ErrorCode.OPERATION_FAILED)
+
+# 获取用户积分
+@api.route('/cards/user/points', methods=['GET'])
+@jwt_required()
+def get_user_points():
+    """获取用户积分"""
+    identity = get_jwt_identity()
+    
+    try:
+        user_id = parse_user_identity(identity)
+        
+        from models.user import User
+        points = User.get_user_points(user_id)
+        return ok_response({'points': points})
+    except Exception as e:
+        current_app.logger.error(f"获取用户积分失败: {str(e)}")
+        raise ApiError('获取用户积分失败', code=ErrorCode.OPERATION_FAILED)
+
+# 增加用户积分
+@api.route('/cards/user/points', methods=['POST'])
+@jwt_required()
+def add_user_points():
+    """增加用户积分"""
+    try:
+        identity = get_jwt_identity()
+        current_app.logger.info(f"用户身份信息: {identity}, 类型: {type(identity)}")
+        
+        user_id = parse_user_identity(identity)
+        
+        data = request.get_json() or {}
+        current_app.logger.info(f"请求数据: {data}, 类型: {type(data)}")
+        
+        points_to_add = data.get('points', 0)
+        current_app.logger.info(f"积分数量: {points_to_add}, 类型: {type(points_to_add)}")
+        
+        if points_to_add <= 0:
+            raise ApiError('积分数量必须大于0', code=ErrorCode.INVALID_PARAMETER)
+        
+        from models.user import User
+        current_app.logger.info(f"调用User.update_user_points({user_id}, {points_to_add})")
+        new_points = User.update_user_points(user_id, points_to_add)
+        current_app.logger.info(f"积分更新成功，新积分: {new_points}")
+        
+        return ok_response({'points': new_points, 'added': points_to_add})
+        
+    except Exception as e:
+        current_app.logger.error(f"增加用户积分失败: {str(e)}")
+        current_app.logger.error(f"错误类型: {type(e)}")
+        import traceback
+        current_app.logger.error(f"错误堆栈: {traceback.format_exc()}")
+        raise ApiError('增加用户积分失败', code=ErrorCode.OPERATION_FAILED)
 
 # 获取抽奖费用
 @api.route('/cards/draw/costs', methods=['GET'])
@@ -109,7 +185,7 @@ def get_draw_costs():
         result = CardService.get_draw_costs()
         return ok_response(result)
     except Exception as e:
-        api.logger.error(f"获取抽奖费用失败: {str(e)}")
+        current_app.logger.error(f"获取抽奖费用失败: {str(e)}")
         raise ApiError('获取抽奖费用失败', code=ErrorCode.OPERATION_FAILED)
 
 # ================== 管理员功能 ==================
@@ -130,7 +206,7 @@ def add_new_card():
             'card_data': data
         })
     except Exception as e:
-        api.logger.error(f"添加卡牌失败: {str(e)}")
+        current_app.logger.error(f"添加卡牌失败: {str(e)}")
         raise ApiError('添加卡牌失败', code=ErrorCode.OPERATION_FAILED)
 
 # 修改卡牌掉落率（管理员功能）
@@ -145,7 +221,7 @@ def modify_drop_rate():
         result = CardService.update_rarity_drop_config(data)
         return ok_response(result, message='稀有度概率已更新')
     except Exception as e:
-        api.logger.error(f"修改掉落率失败: {str(e)}")
+        current_app.logger.error(f"修改掉落率失败: {str(e)}")
         raise ApiError('修改掉落率失败', code=ErrorCode.OPERATION_FAILED)
 
 # 查询稀有度掉落概率（管理员功能）
@@ -158,5 +234,5 @@ def get_drop_rate():
         result = CardService.get_rarity_drop_config()
         return ok_response(result)
     except Exception as e:
-        api.logger.error(f"获取稀有度概率失败: {str(e)}")
+        current_app.logger.error(f"获取稀有度概率失败: {str(e)}")
         raise ApiError('获取稀有度概率失败', code=ErrorCode.OPERATION_FAILED)

@@ -326,7 +326,7 @@ function redirectByRole(role, replace = false) {
 .ipfx { color: rgba(6,95,70,.8); }
 
 /* Primary button width/color transitions */
-.primary-btn { border: none !important; background-image: linear-gradient(135deg, #10b981, #34d399); color: #fff; border-radius: 999px; padding: 0 22px; height: 44px; font-weight: 700; letter-spacing: .2px; box-shadow: 0 6px 14px rgba(16,185,129,.22); transition: transform .18s var(--ease-smooth), box-shadow .18s var(--ease-smooth), opacity .2s, width .28s var(--ease-smooth), background-color .28s var(--ease-smooth), background-image .28s var(--ease-smooth); width: 100%; }
+.primary-btn { position: relative;left: 10px;border: none !important; background-image: linear-gradient(135deg, #10b981, #34d399); color: #fff; border-radius: 999px; padding: 0 22px; height: 44px; font-weight: 700; letter-spacing: .2px; box-shadow: 0 6px 14px rgba(16,185,129,.22); transition: transform .18s var(--ease-smooth), box-shadow .18s var(--ease-smooth), opacity .2s, width .28s var(--ease-smooth), background-color .28s var(--ease-smooth), background-image .28s var(--ease-smooth); width: 100%; }
 .primary-btn:hover { transform: translateY(-1px); box-shadow: 0 10px 20px rgba(16,185,129,.26); }
 .primary-btn:active { transform: translateY(0); box-shadow: 0 6px 14px rgba(16,185,129,.22); }
 .primary-btn.loading { width: 140px; }

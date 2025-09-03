@@ -1,5 +1,6 @@
 from models.card_system import CardSystem
 from models.daily_checkin import DailyCheckin
+from models.user import User
 from core.errors import ApiError, ErrorCode
 
 class CardService:
@@ -45,23 +46,23 @@ class CardService:
         """单抽"""
         try:
             # 检查用户积分
-            user_points = DailyCheckin.get_user_points(user_id)
-            if not user_points or user_points['total_points'] < CardService.SINGLE_DRAW_COST:
+            user_points = User.get_user_points(user_id)
+            if user_points < CardService.SINGLE_DRAW_COST:
                 raise ApiError(f'积分不足，需要 {CardService.SINGLE_DRAW_COST} 积分', code=ErrorCode.VALIDATION_ERROR)
             
             # 扣除积分
-            CardService._deduct_points(user_id, CardService.SINGLE_DRAW_COST)
+            User.update_user_points(user_id, -CardService.SINGLE_DRAW_COST)
             
             # 抽卡
             result = CardSystem.draw_card(user_id, CardService.SINGLE_DRAW_COST)
             
             # 获取更新后的积分
-            updated_points = DailyCheckin.get_user_points(user_id)
+            updated_points = User.get_user_points(user_id)
             
             return {
                 **result,
                 'points_spent': CardService.SINGLE_DRAW_COST,
-                'remaining_points': updated_points['total_points'] if updated_points else 0
+                'remaining_points': updated_points
             }
         except ApiError:
             raise
@@ -73,12 +74,12 @@ class CardService:
         """十连抽"""
         try:
             # 检查用户积分
-            user_points = DailyCheckin.get_user_points(user_id)
-            if not user_points or user_points['total_points'] < CardService.TEN_DRAW_COST:
+            user_points = User.get_user_points(user_id)
+            if user_points < CardService.TEN_DRAW_COST:
                 raise ApiError(f'积分不足，需要 {CardService.TEN_DRAW_COST} 积分', code=ErrorCode.VALIDATION_ERROR)
             
             # 扣除积分
-            CardService._deduct_points(user_id, CardService.TEN_DRAW_COST)
+            User.update_user_points(user_id, -CardService.TEN_DRAW_COST)
             
             # 十连抽
             results = []
@@ -87,12 +88,12 @@ class CardService:
                 results.append(result)
             
             # 获取更新后的积分
-            updated_points = DailyCheckin.get_user_points(user_id)
+            updated_points = User.get_user_points(user_id)
             
             return {
                 'draws': results,
                 'points_spent': CardService.TEN_DRAW_COST,
-                'remaining_points': updated_points['total_points'] if updated_points else 0,
+                'remaining_points': updated_points,
                 'new_cards_count': sum(1 for r in results if not r['is_duplicate']),
                 'duplicate_cards_count': sum(1 for r in results if r['is_duplicate'])
             }
@@ -130,10 +131,11 @@ class CardService:
             config = CardSystem.get_rarity_drop_config()
             # 返回并补足缺省项
             defaults = {
-                'common': 0.40,
-                'rare': 0.25,
-                'epic': 0.15,
-                'legendary': 0.05,
+                'B': 0.35,
+                'A': 0.25,
+                'R': 0.20,
+                'SR': 0.15,
+                'UR': 0.05,
             }
             merged = {**defaults, **config}
             total = sum(merged.values())
@@ -161,31 +163,4 @@ class CardService:
         except Exception as e:
             raise ApiError(f'更新稀有度概率失败: {str(e)}', code=ErrorCode.OPERATION_FAILED)
     
-    @staticmethod
-    def _deduct_points(user_id, points):
-        """扣除用户积分"""
-        from datetime import datetime
-        
-        conn = DailyCheckin.get_db()
-        cursor = conn.cursor()
-        
-        try:
-            # 更新用户积分
-            cursor.execute('''
-                UPDATE user_points 
-                SET total_points = total_points - ?, updated_at = CURRENT_TIMESTAMP
-                WHERE user_id = ?
-            ''', (points, user_id))
-            
-            # 记录积分历史
-            cursor.execute('''
-                INSERT INTO point_history (user_id, points_change, change_type, description)
-                VALUES (?, ?, 'card_draw', '卡牌抽奖消耗')
-            ''', (user_id, -points))
-            
-            conn.commit()
-        except Exception as e:
-            conn.rollback()
-            raise e
-        finally:
-            conn.close()
+

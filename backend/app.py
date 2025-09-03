@@ -18,6 +18,10 @@ app = Flask(__name__)
 CORS(app)  # 启用跨域支持
 socketio = SocketIO(app, cors_allowed_origins='*')
 
+# 文件上传配置
+app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10MB最大文件大小
+app.config['UPLOAD_FOLDER'] = 'uploads'
+
 # JWT 配置
 from flask_jwt_extended import JWTManager
 app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'dev-secret-change-me')
@@ -28,6 +32,43 @@ app.config['JWT_HEADER_NAME'] = 'Authorization'
 app.config['JWT_HEADER_TYPE'] = 'Bearer'
 app.config['JWT_ERROR_MESSAGE_KEY'] = 'msg'
 jwt = JWTManager(app)
+
+# JWT 错误处理器
+@jwt.expired_token_loader
+def expired_token_callback(jwt_header, jwt_payload):
+    """处理过期令牌"""
+    return jsonify({
+        'success': False,
+        'message': '令牌已过期，请重新登录',
+        'code': 'TOKEN_EXPIRED'
+    }), 401
+
+@jwt.invalid_token_loader
+def invalid_token_callback(error):
+    """处理无效令牌"""
+    return jsonify({
+        'success': False,
+        'message': '无效的令牌',
+        'code': 'INVALID_TOKEN'
+    }), 401
+
+@jwt.unauthorized_loader
+def missing_token_callback(error):
+    """处理缺少令牌"""
+    return jsonify({
+        'success': False,
+        'message': '缺少认证令牌',
+        'code': 'MISSING_TOKEN'
+    }), 401
+
+@jwt.needs_fresh_token_loader
+def token_not_fresh_callback(jwt_header, jwt_payload):
+    """处理需要新鲜令牌"""
+    return jsonify({
+        'success': False,
+        'message': '需要新鲜的令牌',
+        'code': 'TOKEN_NOT_FRESH'
+    }), 401
 
 # 注册数据库连接关闭函数
 app.teardown_appcontext(close_db)

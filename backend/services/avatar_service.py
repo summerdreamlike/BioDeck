@@ -101,7 +101,23 @@ class AvatarService:
             
             # 生成唯一文件名
             original_filename = secure_filename(file.filename)
-            file_extension = original_filename.rsplit('.', 1)[1].lower()
+            # 安全地获取文件扩展名
+            if '.' in original_filename:
+                file_extension = original_filename.rsplit('.', 1)[1].lower()
+            else:
+                # 如果没有扩展名，根据MIME类型推断
+                mime_type = get_mime_type(original_filename)
+                if 'jpeg' in mime_type or 'jpg' in mime_type:
+                    file_extension = 'jpg'
+                elif 'png' in mime_type:
+                    file_extension = 'png'
+                elif 'gif' in mime_type:
+                    file_extension = 'gif'
+                elif 'webp' in mime_type:
+                    file_extension = 'webp'
+                else:
+                    file_extension = 'jpg'  # 默认使用jpg
+            
             unique_filename = f"{uuid.uuid4().hex}.{file_extension}"
             file_path = os.path.join(AvatarService.AVATAR_DIR, unique_filename)
             

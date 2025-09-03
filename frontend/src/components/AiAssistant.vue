@@ -559,7 +559,7 @@ onMounted(() => {
     const maxX = vw - btnSize - margin
     const maxY = vh - btnSize - margin
     
-    // 确保按钮在可视范围内
+    // 只在超出边界时才调整，保持用户设置的位置
     if (pos.value.x > maxX) pos.value.x = maxX
     if (pos.value.y > maxY) pos.value.y = maxY
     if (pos.value.x < margin) pos.value.x = margin
@@ -571,7 +571,11 @@ onMounted(() => {
     if (panelSize.value.w > maxW) panelSize.value.w = maxW
     if (panelSize.value.h > maxH) panelSize.value.h = maxH
     
+    // 重新计算面板位置，但不改变FAB按钮位置
     placePanel()
+    
+    // 保存调整后的位置到localStorage
+    localStorage.setItem('aiAssistantPos', JSON.stringify(pos.value))
   })
 })
 
@@ -640,23 +644,8 @@ function placePanel(){
   const bottomSide = py >= cy
   handleCorner.value = (bottomSide ? 'b' : 't') + (rightSide ? 'r' : 'l')
 
-  // 确保FAB按钮位置在可视范围内
-  const margin = 20
-  if (pos.value.x + btnSize > vw - margin) {
-    pos.value.x = vw - btnSize - margin
-  }
-  if (pos.value.y + btnSize > vh - margin) {
-    pos.value.y = vh - btnSize - margin
-  }
-  if (pos.value.x < margin) {
-    pos.value.x = margin
-  }
-  if (pos.value.y < margin) {
-    pos.value.y = margin
-  }
-  
-  // 保存调整后的位置到localStorage
-  localStorage.setItem('aiAssistantPos', JSON.stringify(pos.value))
+  // 注意：placePanel函数只负责计算面板位置，不改变FAB按钮位置
+  // FAB按钮位置的边界检查在resize事件监听器中处理
 }
 </script>
 

@@ -1,149 +1,107 @@
-# 脚本工具包
+# 卡牌系统使用说明
 
-这个目录包含了项目的各种初始化、测试和管理脚本。
+## 概述
 
-## 目录结构
+本系统是一个生物学主题的卡牌收集游戏，用户可以通过消耗积分进行抽卡，收集不同稀有度的生物学卡牌。
 
+## 稀有度系统
+
+### 稀有度等级
+- **B级卡牌 (B)**: 35%掉落率，100积分价值 - 基础生物学概念
+- **A级卡牌 (A)**: 25%掉落率，300积分价值 - 重要生物学概念  
+- **R级卡牌 (R)**: 20%掉落率，600积分价值 - 进阶生物学概念
+- **SR级卡牌 (SR)**: 15%掉落率，1200积分价值 - 高级生物学概念
+- **UR级卡牌 (UR)**: 5%掉落率，2500积分价值 - 顶级生物学概念
+
+### 抽卡费用
+- **单抽**: 100积分
+- **十抽**: 900积分（优惠100积分）
+
+## 初始化步骤
+
+### 1. 运行初始化脚本
+```bash
+cd backend/scripts
+python init_card_system_update.py
 ```
-scripts/
-├── __init__.py              # 包初始化文件
-├── README.md               # 本说明文档
-├── init_user_profile.py    # 用户画像功能初始化脚本
-├── init_auth_update.py     # 认证系统更新初始化脚本
-├── init_avatar.py          # 头像功能初始化脚本
-├── test_user_profile.py    # 用户画像功能测试脚本
-├── test_auth_update.py     # 认证系统更新测试脚本
-├── test_avatar.py          # 头像功能测试脚本
-├── export_db.py            # 导出 SQLite 为 dump.sql
-└── import_db.py            # 导入 dump.sql 到 database.db
-```
 
-## 脚本说明
+### 2. 脚本功能
+- 添加积分字段到users表
+- 更新现有用户积分（默认100积分）
+- 清空旧卡牌数据
+- 插入42张新的生物学卡牌
+- 更新稀有度概率配置
+- 创建数据库索引
 
-### 初始化脚本
+### 3. 卡牌内容
+- **B级**: 4张 - 种群密度、协助扩散、核糖体、细胞学说奠基
+- **A级**: 11张 - 赤霉素、酸碱平衡、单基因遗传病、点突变、程序性死亡、主动运输、生物催化剂、细胞膜、磷脂双分子层、蛋白质、叶绿体
+- **R级**: 12张 - 食物链、生长素、激素调节、反射弧、染色体异常遗传病、多基因遗传病、染色体结构变异、分离定律、细胞全能性、无氧呼吸、线粒体、能量货币
+- **SR级**: 12张 - 翻译、食物网、现代生物进化理论、染色体数目变异、转录、半保留复制、伴X遗传、自由组合定律、有丝分裂、暗反应、光反应、有氧呼吸
+- **UR级**: 5张 - 物质循环、生物多样性、能量流动、自然选择、减数分裂
 
-#### `init_user_profile.py`
+## 数据库结构
 
-- **作用**: 初始化用户画像功能，创建必要的数据库表
-- **运行方式**: `python scripts/init_user_profile.py`
-- **功能**:
-  - 创建用户画像表
-  - 设置相关索引
-  - 显示可用的 API 接口
+### 主要表
+- `users`: 用户信息，包含积分字段
+- `card_definitions`: 卡牌定义
+- `rarity_drop_config`: 稀有度概率配置
+- `user_cards`: 用户卡牌收集
+- `draw_history`: 抽奖历史记录
 
-#### `init_auth_update.py`
+### 字段说明
+- `card_id`: 卡牌唯一标识符
+- `name`: 卡牌名称
+- `description`: 卡牌描述
+- `rarity`: 稀有度等级
+- `image_url`: 卡牌图片路径
+- `points_cost`: 卡牌积分价值
+- `drop_rate`: 掉落概率
 
-- **作用**: 更新认证系统，添加新字段和功能
-- **运行方式**: `python scripts/init_auth_update.py`
-- **功能**:
-  - 添加学号、教职工号、班级编号字段
-  - 创建刷新令牌表
-  - 优化数据库索引
-  - 支持多种登录方式
+## API接口
 
-#### `init_avatar.py`
+### 卡牌收集
+- `GET /cards/collection` - 获取用户卡牌收集
+- `GET /cards/all` - 获取所有卡牌定义
 
-- **作用**: 初始化头像功能，创建必要的数据库表和目录
-- **运行方式**: `python scripts/init_avatar.py`
-- **功能**:
-  - 添加avatar_url字段到users表
-  - 创建avatar_files表记录文件信息
-  - 创建头像存储目录
-  - 设置相关索引
+### 抽奖功能
+- `POST /cards/draw/single` - 单抽
+- `POST /cards/draw/ten` - 十连抽
+- `GET /cards/draw/history` - 获取抽奖历史
+- `GET /cards/draw/costs` - 获取抽奖费用
 
-### 测试脚本
+### 用户积分
+- `GET /cards/user/points` - 获取用户积分
 
-#### `test_user_profile.py`
-
-- **作用**: 测试用户画像相关 API 功能
-- **运行方式**: `python scripts/test_user_profile.py`
-- **测试内容**:
-  - 分析用户画像
-  - 生成用户画像
-  - 获取用户画像
-  - 更新用户画像
-
-#### `test_auth_update.py`
-
-- **作用**: 测试认证系统的新功能
-- **运行方式**: `python scripts/test_auth_update.py`
-- **测试内容**:
-  - 学生/教师注册
-  - 多种方式登录
-  - 自动班级分配
-
-#### `test_avatar.py`
-
-- **作用**: 测试头像相关API功能
-- **运行方式**: `python scripts/test_avatar.py`
-- **测试内容**:
-  - 获取头像URL
-  - 获取头像详细信息
-  - 删除头像
-  - 创建测试图片
-
-## 使用流程
-
-1. **初始化系统**:
-
-   ```bash
-   # 更新认证系统
-   python scripts/init_auth_update.py
-
-   # 初始化用户画像功能
-   python scripts/init_user_profile.py
-   
-   # 初始化头像功能
-   python scripts/init_avatar.py
-   ```
-
-2. **启动后端服务**:
-
-   ```bash
-   python app.py
-   ```
-
-3. **运行测试**:
-
-   ```bash
-   # 测试认证系统
-   python scripts/test_auth_update.py
-
-   # 测试用户画像功能
-   python scripts/test_user_profile.py
-   
-   # 测试头像功能
-   python scripts/test_avatar.py
-   ```
-
-4. **导出/导入数据库**:
-
-   - 导出当前数据库为 SQL：
-
-     ```bash
-     python backend/scripts/export_db.py
-     ```
-
-     生成文件：`backend/scripts/dump.sql`
-
-   - 在目标机器导入 SQL：
-     ```bash
-     python backend/scripts/import_db.py
-     ```
-     将覆盖/创建 `backend/database.db`。
-
-## 优势
-
-将脚本放在 `scripts/` 目录下的好处：
-
-1. **项目结构清晰**: 根目录不再混乱
-2. **职责分离**: 脚本与主程序代码分离
-3. **易于维护**: 所有脚本集中管理
-4. **符合规范**: 遵循 Python 项目最佳实践
-5. **便于扩展**: 可以轻松添加新的脚本
+### 管理员功能
+- `POST /cards/admin/add` - 添加新卡牌
+- `GET /cards/admin/drop-rate` - 查询稀有度概率
+- `PUT /cards/admin/drop-rate` - 更新稀有度概率
 
 ## 注意事项
 
-- 所有脚本都添加了项目根目录到 Python 路径，确保能正确导入项目模块
-- 数据库路径使用相对路径，确保在不同环境下都能正常工作
-- 测试脚本需要后端服务运行才能正常工作
+1. **初始化顺序**: 必须先运行初始化脚本，再启动后端服务
+2. **图片资源**: 确保前端assets/img/Decks目录下有对应的卡牌图片
+3. **积分系统**: 新用户默认100积分，抽卡会实时扣除积分
+4. **稀有度平衡**: 概率配置确保总概率为100%，系统会自动归一化
+5. **数据一致性**: 初始化脚本会清空旧数据，请确保数据备份
+
+## 故障排除
+
+### 常见问题
+1. **数据库连接错误**: 检查database.db文件路径
+2. **图片404错误**: 检查前端图片资源路径
+3. **积分不足错误**: 检查用户积分字段是否正确添加
+4. **稀有度配置错误**: 检查rarity_drop_config表数据
+
+### 日志查看
+- 后端日志会记录所有API调用和错误信息
+- 使用 `current_app.logger` 查看详细错误
+
+## 更新日志
+
+- ✅ 更新稀有度系统：B/A/R/SR/UR
+- ✅ 完善卡牌描述和图片URL
+- ✅ 集成用户积分系统
+- ✅ 优化抽卡概率分布
+- ✅ 统一前后端数据格式

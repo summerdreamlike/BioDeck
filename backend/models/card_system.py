@@ -6,7 +6,10 @@ import random
 class CardSystem(BaseModel):
     @classmethod
     def get_db(cls):
-        return sqlite3.connect(cls.db_path)
+        from .base import DATABASE
+        conn = sqlite3.connect(DATABASE)
+        conn.row_factory = sqlite3.Row
+        return conn
     
     @classmethod
     def ensure_tables(cls):
@@ -83,39 +86,43 @@ class CardSystem(BaseModel):
         
         # 插入默认卡牌
         default_cards = [
-            # 普通卡牌 (Common)
-            ('C001', '细胞膜', '细胞的基本保护屏障', 'common', '/images/cards/cell_membrane.jpg', 50, 0.4),
-            ('C002', '线粒体', '细胞的能量工厂', 'common', '/images/cards/mitochondria.jpg', 50, 0.4),
-            ('C003', '细胞核', '细胞的指挥中心', 'common', '/images/cards/nucleus.jpg', 50, 0.4),
-            ('C004', '叶绿体', '植物细胞的绿色工厂', 'common', '/images/cards/chloroplast.jpg', 50, 0.4),
-            ('C005', '高尔基体', '细胞的包装中心', 'common', '/images/cards/golgi.jpg', 50, 0.4),
+            # B级卡牌 (B)
+            ('B001', '细胞膜', '细胞的基本保护屏障', 'B', '/images/cards/cell_membrane.jpg', 100, 0.35),
+            ('B002', '线粒体', '细胞的能量工厂', 'B', '/images/cards/mitochondria.jpg', 100, 0.35),
+            ('B003', '细胞核', '细胞的指挥中心', 'B', '/images/cards/nucleus.jpg', 100, 0.35),
+            ('B004', '叶绿体', '植物细胞的绿色工厂', 'B', '/images/cards/chloroplast.jpg', 100, 0.35),
+            ('B005', '高尔基体', '细胞的包装中心', 'B', '/images/cards/golgi.jpg', 100, 0.35),
             
-            # 稀有卡牌 (Rare)
-            ('R001', 'DNA双螺旋', '生命的密码', 'rare', '/images/cards/dna.jpg', 200, 0.25),
-            ('R002', '蛋白质合成', '生命的制造过程', 'rare', '/images/cards/protein.jpg', 200, 0.25),
-            ('R003', '细胞分裂', '生命的延续', 'rare', '/images/cards/division.jpg', 200, 0.25),
-            ('R004', '光合作用', '阳光的能量转换', 'rare', '/images/cards/photosynthesis.jpg', 200, 0.25),
-            ('R005', '呼吸作用', '能量的释放', 'rare', '/images/cards/respiration.jpg', 200, 0.25),
+            # A级卡牌 (A)
+            ('A001', 'DNA双螺旋', '生命的密码', 'A', '/images/cards/dna.jpg', 300, 0.25),
+            ('A002', '蛋白质合成', '生命的制造过程', 'A', '/images/cards/protein.jpg', 300, 0.25),
+            ('A003', '细胞分裂', '生命的延续', 'A', '/images/cards/division.jpg', 300, 0.25),
+            ('A004', '光合作用', '阳光的能量转换', 'A', '/images/cards/photosynthesis.jpg', 300, 0.25),
+            ('A005', '呼吸作用', '能量的释放', 'A', '/images/cards/respiration.jpg', 300, 0.25),
             
-            # 史诗卡牌 (Epic)
-            ('E001', '基因突变', '进化的源泉', 'epic', '/images/cards/mutation.jpg', 500, 0.15),
-            ('E002', '自然选择', '适者生存', 'epic', '/images/cards/selection.jpg', 500, 0.15),
-            ('E003', '生态系统', '生命的网络', 'epic', '/images/cards/ecosystem.jpg', 500, 0.15),
-            ('E004', '生物多样性', '地球的财富', 'epic', '/images/cards/biodiversity.jpg', 500, 0.15),
-            ('E005', '进化论', '生命的历史', 'epic', '/images/cards/evolution.jpg', 500, 0.15),
+            # R级卡牌 (R)
+            ('R001', '基因突变', '进化的源泉', 'R', '/images/cards/mutation.jpg', 600, 0.20),
+            ('R002', '自然选择', '适者生存', 'R', '/images/cards/selection.jpg', 600, 0.20),
+            ('R003', '生态系统', '生命的网络', 'R', '/images/cards/ecosystem.jpg', 600, 0.20),
+            ('R004', '生物多样性', '地球的财富', 'R', '/images/cards/biodiversity.jpg', 600, 0.20),
+            ('R005', '进化论', '生命的历史', 'R', '/images/cards/evolution.jpg', 600, 0.20),
             
-            # 传说卡牌 (Legendary)
-            ('L001', '生命起源', '最初的奇迹', 'legendary', '/images/cards/origin.jpg', 1000, 0.05),
-            ('L002', '智慧生命', '意识的觉醒', 'legendary', '/images/cards/intelligence.jpg', 1000, 0.05),
-            ('L003', '宇宙生命', '无限的可能', 'legendary', '/images/cards/universe.jpg', 1000, 0.05),
-            ('L004', '永恒生命', '不灭的传说', 'legendary', '/images/cards/eternal.jpg', 1000, 0.05),
-            ('L005', '创世神卡', '生物学的终极奥秘', 'legendary', '/images/cards/creator.jpg', 1000, 0.05),
+            # SR级卡牌 (SR)
+            ('SR001', '生命起源', '最初的奇迹', 'SR', '/images/cards/origin.jpg', 1200, 0.15),
+            ('SR002', '智慧生命', '意识的觉醒', 'SR', '/images/cards/intelligence.jpg', 1200, 0.15),
+            ('SR003', '宇宙生命', '无限的可能', 'SR', '/images/cards/universe.jpg', 1200, 0.15),
+            ('SR004', '永恒生命', '不灭的传说', 'SR', '/images/cards/eternal.jpg', 1200, 0.15),
+            ('SR005', '创世神卡', '生物学的终极奥秘', 'SR', '/images/cards/creator.jpg', 1200, 0.15),
+            
+            # UR级卡牌 (UR) - 已移至初始化脚本中
+            # ('UR001', '物质循环', '生物圈中物质循环过程', 'UR', '/assets/img/Decks/UR卡/物质循环.png', 2500, 0.05),
+            # ('UR002', '生物多样性', '地球生物多样性', 'UR', '/assets/img/Decks/UR卡/生物多样性.png', 2500, 0.05),
+            # ('UR003', '能量流动', '生态系统能量流动', 'UR', '/assets/img/Decks/UR卡/能量流动.png', 2500, 0.05),
         ]
         
-        cursor.executemany('''
-            INSERT INTO card_definitions (card_id, name, description, rarity, image_url, points_cost, drop_rate)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', default_cards)
+        # 注意：默认卡牌数据已移至初始化脚本中
+        # 这里不再插入默认卡牌，由 init_card_system_update.py 脚本统一管理
+        pass
         
         conn.commit()
         conn.close()
@@ -129,10 +136,11 @@ class CardSystem(BaseModel):
             cursor.execute('SELECT COUNT(*) FROM rarity_drop_config')
             if cursor.fetchone()[0] == 0:
                 default_rates = [
-                    ('common', 0.40),
-                    ('rare', 0.25),
-                    ('epic', 0.15),
-                    ('legendary', 0.05)
+                    ('B', 0.35),
+                    ('A', 0.25),
+                    ('R', 0.20),
+                    ('SR', 0.15),
+                    ('UR', 0.05)
                 ]
                 cursor.executemany('INSERT INTO rarity_drop_config (rarity, rate) VALUES (?, ?)', default_rates)
                 conn.commit()
@@ -290,13 +298,13 @@ class CardSystem(BaseModel):
     @classmethod
     def update_rarity_drop_config(cls, config):
         """更新稀有度概率配置。
-        参数示例: { 'common': 0.4, 'rare': 0.25, 'epic': 0.15, 'legendary': 0.05 }
+        参数示例: { 'B': 0.35, 'A': 0.25, 'R': 0.20, 'SR': 0.15, 'UR': 0.05 }
         """
         conn = cls.get_db()
         cursor = conn.cursor()
         try:
             # 简单校验
-            allowed = {'common', 'rare', 'epic', 'legendary'}
+            allowed = {'B', 'A', 'R', 'SR', 'UR'}
             for key in config.keys():
                 if key not in allowed:
                     raise ValueError(f'未知稀有度: {key}')

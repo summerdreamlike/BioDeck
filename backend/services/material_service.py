@@ -10,7 +10,7 @@ import traceback
 from core.helpers import get_db, db_fetch_one, db_fetch_all, db_execute
 from core.errors import ApiError, ErrorCode
 from models import Material, Category, Tag
-from utils.file_utils import allowed_file, get_safe_filename, get_file_size
+from utils.file_utils import allowed_file, get_safe_filename, get_file_size, get_unique_filename, ensure_dir_exists
 
 class MaterialService:
     @staticmethod
@@ -201,6 +201,80 @@ class MaterialService:
         except Exception as e:
             traceback.print_exc()
             raise ApiError(f'更新浏览量失败: {str(e)}', code=ErrorCode.OPERATION_FAILED)
+
+    @staticmethod
+    def upload_courseware(file, uploader_id, category_id=None, description=None, tags=None):
+        """
+        上传课件
+        
+        :param file: 文件对象
+        :param uploader_id: 上传者ID
+        :param category_id: 分类ID
+        :param description: 描述
+        :param tags: 标签ID列表
+        :return: 新资源ID和资源信息
+        """
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        try:
+            # 验证上传者是否存在
+            cursor.execute('SELECT id FROM users WHERE id = ?', (uploader_id,))
+            if not cursor.fetchone():
+                raise ApiError('上传者不存在', code=ErrorCode.RESOURCE_NOT_FOUND)
+            
+            # 验证文件类型
+            allowed_extensions = {'ppt', 'pptx', 'pdf', 'doc', 'docx', 'xls', 'xlsx'}
+            if not allowed_file(file.filename, allowed_extensions):
+                raise ApiError('不支持的文件类型，仅支持PPT、PDF、Word和Excel文件', code=ErrorCode.VALIDATION_ERROR)
+            
+            # 验证文件大小（限制为50MB）
+            max_size = 50 * 1024 * 1024  # 50MB
+            if file.content_length > max_size:
+                raise ApiError('文件大小超过限制（最大50MB）', code=ErrorCode.VALIDATION_ERROR)
+            
+            # 确保上传目录存在
+            upload_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'uploads', 'courseware')
+            ensure_dir_exists(upload_dir)
+            
+            # 生成安全的文件名
+            filename = get_unique_filename(file.filename)
+            file_path = os.path.join(upload_dir, filename)
+            
+            # 保存文件
+            file.save(file_path)
+            file_size = get_file_size(file_path)
+            
+            # 获取原始文件名（不含路径）
+            original_filename = os.path.basename(file.filename)
+            
+            # 创建资源记录
+            material_id = Material.create(
+                name=original_filename,
+                type_='courseware',  # 指定类型为课件
+                url=f'/uploads/courseware/{filename}',
+                size=file_size,
+                uploader_id=uploader_id,
+                thumbnail=None,  # 课件暂不生成缩略图
+                category_id=category_id,
+                description=description,
+                tags=tags
+            )
+            
+            # 获取创建的资源信息
+            material = Material.get_by_id(material_id)
+            
+            return {
+                'id': material_id,
+                'material': material
+            }
+        except ApiError:
+            raise
+        except Exception as e:
+            traceback.print_exc()
+            raise ApiError(f'上传课件失败: {str(e)}', code=ErrorCode.OPERATION_FAILED)
+        finally:
+            conn.close()
 
 class CategoryService:
     @staticmethod

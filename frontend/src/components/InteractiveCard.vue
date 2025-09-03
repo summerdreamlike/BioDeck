@@ -20,6 +20,14 @@
           class="gif-overlay"
         />
         
+        <!-- 镭射叠加层 -->
+        <img 
+          v-if="laserSrc && enableLaser" 
+          :src="laserSrc" 
+          :alt="laserAlt || 'Laser Overlay'"
+          class="laser-overlay"
+        />
+        
                  <!-- 插槽内容 -->
          <slot name="overlay"></slot>
        </div>
@@ -57,6 +65,16 @@ const props = defineProps({
   },
   // GIF alt文本
   gifAlt: {
+    type: String,
+    default: ''
+  },
+  // 镭射图片源
+  laserSrc: {
+    type: String,
+    default: ''
+  },
+  // 镭射图片alt文本
+  laserAlt: {
     type: String,
     default: ''
   },
@@ -132,6 +150,11 @@ const props = defineProps({
   },
   // 是否启用GIF叠加层
   enableGif: {
+    type: Boolean,
+    default: true
+  },
+  // 是否启用镭射效果
+  enableLaser: {
     type: Boolean,
     default: true
   }
@@ -405,6 +428,47 @@ const cardStyle = computed(() => {
   opacity: 0.9;
   border-radius: inherit;
   z-index: 1;
+}
+
+/* 镭射叠加层 - 只在有高光时显示，不阻挡背景图片 */
+.laser-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  mix-blend-mode: soft-light;
+  pointer-events: none;
+  border-radius: inherit;
+  z-index: 3;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  /* 使用CSS变量控制显示区域 */
+  mask: linear-gradient(120deg,
+    transparent calc(var(--per, 0%) - 30%),
+    rgba(255,255,255,0.1) calc(var(--per, 0%) - 25%),
+    rgba(255,255,255,0.3) calc(var(--per, 0%) - 20%),
+    rgba(255,255,255,0.6) calc(var(--per, 0%) - 15%),
+    rgba(255,255,255,0.8) calc(var(--per, 0%) - 10%),
+    rgba(255,255,255,1) calc(var(--per, 0%) - 5%),
+    rgba(255,255,255,1) var(--per, 0%),
+    rgba(255,255,255,1) calc(var(--per, 0%) + 5%),
+    rgba(255,255,255,0.8) calc(var(--per, 0%) + 10%),
+    rgba(255,255,255,0.6) calc(var(--per, 0%) + 15%),
+    rgba(255,255,255,0.3) calc(var(--per, 0%) + 20%),
+    rgba(255,255,255,0.1) calc(var(--per, 0%) + 25%),
+    transparent calc(var(--per, 0%) + 30%));
+  mask-size: 200% 200%;
+  mask-position: calc(var(--per, 0%) - 100%) 50%;
+}
+
+/* 当有高光时显示镭射效果，但透明度较低 */
+.card-art[style*="--per: 0%"] .laser-overlay {
+  opacity: 0;
+}
+
+.card-art[style*="--per"] .laser-overlay {
+  opacity: 0.3;
 }
 
 /* 高光覆层使用 --per 控制位置 */

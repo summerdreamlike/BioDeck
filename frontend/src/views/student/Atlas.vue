@@ -104,10 +104,9 @@ const q = ref('')
 const activeDeck = ref(null)
 const cards = ref([])
 
-// 使用本地 src/assets/img/Decks 下的图片作为封面
-const deckCtx = require.context('../../assets/img/Decks', false, /\.(png|jpe?g|webp)$/)
+// 使用本地 src/assets/img/Decks/backside 下的图片作为封面
+const deckCtx = require.context('../../assets/img/Decks/backside', false, /\.(png|jpe?g|webp)$/)
 const deckFiles = deckCtx.keys()
-const emojiPool = ['🧬','⚡','🧪','🔬','🌿','📚','🧫','🧠']
 const prettyName = (k) => {
   const base = k.replace(/^\.\//,'').replace(/\.[^.]+$/,'')
   return base.replace(/[_-]+/g,' ').replace(/\b\w/g, s => s.toUpperCase())
@@ -115,7 +114,6 @@ const prettyName = (k) => {
 const decks = ref(deckFiles.map((k, i) => ({
   id: i + 1,
   name: prettyName(k),
-  emoji: emojiPool[i % emojiPool.length],
   cover: deckCtx(k),
 })))
 

@@ -125,16 +125,42 @@ class User(BaseModel):
         # 插入用户数据
         if role == 'student':
             cursor.execute('''
-                INSERT INTO users (name, student_id, password, role, class_number) 
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO users (name, student_id, password, role, class_number, points) 
+                VALUES (?, ?, ?, ?, ?, 100)
             ''', (name, id_number, password, role, class_number))
         else:
             cursor.execute('''
-                INSERT INTO users (name, teacher_id, password, role) 
-                VALUES (?, ?, ?, ?)
+                INSERT INTO users (name, teacher_id, password, role, points) 
+                VALUES (?, ?, ?, ?, 100)
             ''', (name, id_number, password, role))
         
         user_id = cursor.lastrowid
         conn.commit()
         conn.close()
-        return user_id 
+        return user_id
+    
+    @classmethod
+    def get_user_points(cls, user_id):
+        """获取用户积分"""
+        conn = cls.get_db()
+        cursor = conn.cursor()
+        cursor.execute('SELECT points FROM users WHERE id = ?', (user_id,))
+        result = cursor.fetchone()
+        conn.close()
+        return result[0] if result else 0
+    
+    @classmethod
+    def update_user_points(cls, user_id, points_change):
+        """更新用户积分"""
+        conn = cls.get_db()
+        cursor = conn.cursor()
+        cursor.execute('UPDATE users SET points = points + ? WHERE id = ?', (points_change, user_id))
+        conn.commit()
+        
+        # 获取更新后的积分值
+        cursor.execute('SELECT points FROM users WHERE id = ?', (user_id,))
+        result = cursor.fetchone()
+        new_points = result[0] if result else 0
+        
+        conn.close()
+        return new_points 

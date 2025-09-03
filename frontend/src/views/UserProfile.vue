@@ -29,7 +29,7 @@
                   <el-space>
                     <el-tag :type="roleTagType" effect="dark">{{ roleText }}</el-tag>
                     <el-tag v-if="isTeacher" type="success" effect="light" round>授课教师</el-tag>
-                    <el-tag v-if="isStudent" type="info" effect="light" round>在读学生</el-tag>
+                    <el-tag v-if="isStudent" type="primary" effect="light" round>在读学生</el-tag>
                   </el-space>
                 </el-form-item>
                 <el-form-item v-if="isTeacher" label="工号">
@@ -149,6 +149,13 @@
       </el-col>
     </el-row>
   </div>
+  <!-- 返回首页按钮 -->
+  <div class="back-wrap">
+    <el-button class="back-btn" type="primary" round @click="goHome">
+      <el-icon style="margin-right:6px"><el-icon-arrow-left /></el-icon>
+      返回首页
+    </el-button>
+  </div>
   <!-- 修改密码对话框 -->
   <el-dialog v-model="showPwd" title="修改密码" width="420px" 
              @keydown.enter.prevent="submitChangePassword(pwdFormRef)">
@@ -180,6 +187,7 @@
 
 <script setup>
 import { computed, reactive, ref, watchEffect } from 'vue'
+import { useRouter } from 'vue-router'
 import { useUserStore } from '../store'
 import { ElMessage } from 'element-plus'
 import { authApi, userApi } from '@/api'
@@ -191,7 +199,7 @@ const user = computed(() => userStore.getUserInfo)
 const isTeacher = computed(() => user.value?.role === 'teacher')
 const isStudent = computed(() => user.value?.role === 'student')
 const roleText = computed(() => isTeacher.value ? '教师' : (isStudent.value ? '学生' : (user.value?.role || '—')))
-const roleTagType = computed(() => isTeacher.value ? 'success' : (isStudent.value ? 'info' : ''))
+const roleTagType = computed(() => isTeacher.value ? 'success' : (isStudent.value ? 'primary' : ''))
 
 const form = reactive({ name: '', teacher_id: '', student_id: '' })
 watchEffect(() => {
@@ -231,12 +239,22 @@ const saving = ref(false)
 // 用户画像：根据身份提供不同标志与假数据占位
 const persona = computed(() => ({
   badgeText: isTeacher.value ? '教师画像' : (isStudent.value ? '学生画像' : '访客'),
-  badgeType: isTeacher.value ? 'success' : (isStudent.value ? 'info' : 'warning'),
+  badgeType: isTeacher.value ? 'success' : (isStudent.value ? 'primary' : 'warning'),
 }))
 
 const idText = computed(() => isTeacher.value ? (form.teacher_id || '—') : (isStudent.value ? (form.student_id || '—') : '—'))
 
 const teacherStats = reactive({ classes: 2, students: 60, tasks: 12 })
+
+// 返回首页
+const router = useRouter()
+function goHome(){
+  if (isTeacher.value) {
+    router.push({ name: 'Dashboard' })
+  } else {
+    router.push({ name: 'Home' })
+  }
+}
 
 async function submitChangePassword(formEl) {
   if (!formEl) return
@@ -363,4 +381,15 @@ async function onAvatarDone(blob) {
   from{ transform: translateY(8px); opacity: 0; }
   to{ transform: translateY(0); opacity: 1; }
 }
+
+/* 返回按钮区域 */
+.back-wrap{ display: flex; justify-content: center; margin: 16px 0 0; }
+.back-btn{
+  height: 40px;
+  padding: 0 18px;
+  box-shadow: 0 10px 24px rgba(59,130,246,.18);
+  transition: transform .16s ease, box-shadow .16s ease;
+}
+.back-btn:hover{ transform: translateY(-2px); box-shadow: 0 14px 32px rgba(59,130,246,.22); }
+.back-btn:active{ transform: translateY(0); box-shadow: 0 8px 18px rgba(59,130,246,.18); }
 </style>

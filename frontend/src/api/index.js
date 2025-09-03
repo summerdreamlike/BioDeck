@@ -114,6 +114,18 @@ export const attendanceApi = {
   getAttendance: () => api.get('/attendance'),
   createAttendance: (data) => api.post('/attendance', data),
   exportAttendance: (format = 'csv') => api.get(`/attendance/export?format=${format}`)
+}
+
+// Card System API
+export const cardApi = {
+  getUserCollection: () => api.get('/cards/collection'),
+  getAllCards: () => api.get('/cards/all'),
+  singleDraw: () => api.post('/cards/draw/single'),
+  tenDraw: () => api.post('/cards/draw/ten'),
+  getDrawHistory: (limit = 50) => api.get(`/cards/draw/history?limit=${limit}`),
+  getDrawCosts: () => api.get('/cards/draw/costs'),
+  getUserPoints: () => api.get('/cards/user/points'),
+  addPoints: (amount) => api.post('/cards/user/points', { points: amount })
 } 
 
 

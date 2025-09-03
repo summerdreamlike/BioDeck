@@ -5,7 +5,10 @@ import sqlite3
 class DailyCheckin(BaseModel):
     @classmethod
     def get_db(cls):
-        return sqlite3.connect(cls.db_path)
+        from .base import DATABASE
+        conn = sqlite3.connect(DATABASE)
+        conn.row_factory = sqlite3.Row
+        return conn
     
     @classmethod
     def ensure_tables(cls):

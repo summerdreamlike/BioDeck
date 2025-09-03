@@ -3,7 +3,14 @@
     <div class="points">
       <span class="label">积分</span>
       <span class="value">{{ points }}</span>
-      <el-button class="gain gbtn-mini" size="small" type="success" plain @click="addPoints(100)">+100</el-button>
+      <el-button class="gain gbtn-mini" size="small" type="success" plain @click="addPoints(1000)">+1000</el-button>
+      
+      <!-- 积分变化动画 -->
+      <transition name="points-change">
+        <div v-if="pointsChange.show" class="points-change-animation" :class="pointsChange.type">
+          {{ pointsChange.type === 'add' ? '+' : '-' }}{{ pointsChange.value }}
+        </div>
+      </transition>
     </div>
 
     <InteractiveCard
@@ -16,27 +23,30 @@
       aspect-ratio="3/5"
       border-radius="16px"
       :image-scale="0.165"
+      :laser-src="laserSrc"
+      :enable-laser="true"
+      :laser-alt="'镭射效果'"
     />
 
     <div class="actions">
-      <el-button class="gbtn one" type="primary" size="large" :disabled="points < 10 || isDrawing" @click="startDraw(1)">
+      <el-button class="gbtn one" type="primary" size="large" :disabled="points < 100 || isDrawing" @click="startDraw(1)">
         <el-icon style="margin-right:6px"><CreditCard/></el-icon>
-        一抽（10）
+        一抽（100）
       </el-button>
-      <el-button class="gbtn ten" type="warning" size="large" :disabled="points < 100 || isDrawing" @click="startDraw(10)">
+      <el-button class="gbtn ten" type="warning" size="large" :disabled="points < 900 || isDrawing" @click="startDraw(10)">
         <el-icon style="margin-right:6px"><CreditCard/></el-icon>
-        十抽（100）
+        十抽（900）
       </el-button>
     </div>
 
-    <GachaAnimation v-if="showAnimation" :count="lastCount" @complete="onAnimationComplete"/>
+    <GachaAnimation v-if="showAnimation" :count="lastCount" :results="drawResults" @complete="onAnimationComplete"/>
     <GachaOverlay v-if="showOverlay" :results="drawResults" :count="lastCount" @close="onOverlayClose"/>
   </div>
   
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import { CreditCard } from '@element-plus/icons-vue'
 import InteractiveCard from '@/components/InteractiveCard.vue'
@@ -44,46 +54,128 @@ import GachaAnimation from '@/components/GachaAnimation.vue'
 import GachaOverlay from '@/components/GachaOverlay.vue'
 import cardImage from '@/assets/img/Decks/background.png'
 import sparklesGif from '@/assets/gif/sparkles.gif'
+import laserSrc from '@/assets/img/镭射.png'
+import { cardApi } from '@/api'
 
-const STORAGE_KEY = 'gacha_points'
-const DEFAULT_POINTS = 200
-
-const points = ref(loadPoints())
+const points = ref(0)
 const isDrawing = ref(false)
 const showAnimation = ref(false)
 const showOverlay = ref(false)
 const drawResults = ref([])
 const lastCount = ref(0)
+const userCards = ref([]) // 用户拥有的卡牌
 
-function loadPoints(){
-  const raw = localStorage.getItem(STORAGE_KEY)
-  const n = Number(raw)
-  return Number.isFinite(n) && n >= 0 ? n : DEFAULT_POINTS
+// 添加积分变化动画
+const pointsAnimation = ref(false)
+const pointsChange = ref({ show: false, value: 0, type: 'add' })
+
+async function loadUserPoints(){
+  try {
+    // 从后端获取用户积分
+    const response = await cardApi.getUserPoints()
+    
+    if ((response && response.data && typeof response.data.points === 'number') || 
+        (response && response.code === 0 && response.data && typeof response.data.points === 'number')) {
+      points.value = response.data.points
+    } else {
+      points.value = 100 // 默认积分
+    }
+  } catch (error) {
+    console.error('获取用户积分失败:', error)
+    points.value = 100 // 默认积分
+  }
 }
 
-function savePoints(value){
-  points.value = value
-  localStorage.setItem(STORAGE_KEY, String(value))
-}
-
-function addPoints(amount){
+async function addPoints(amount){
   const v = Number(amount) || 0
   if (v <= 0) return
-  savePoints(points.value + v)
-  ElMessage.success(`已获得 ${v} 积分`)
+  
+  try {
+    // 调用后端API增加积分
+    const response = await cardApi.addPoints(v)
+    
+    if ((response && response.data && typeof response.data.points === 'number') || 
+        (response && response.code === 0 && response.data && typeof response.data.points === 'number')) {
+      // 更新前端积分显示
+      points.value = response.data.points
+      
+      ElMessage.success(`已获得 ${v} 积分`)
+      
+      // 触发积分增加动画
+      pointsChange.value = { show: true, value: v, type: 'add' }
+      setTimeout(() => {
+        pointsChange.value.show = false
+      }, 1500)
+      
+      // 重新加载用户积分确保数据同步
+      await loadUserPoints()
+    } else {
+      ElMessage.error(response?.message || '增加积分失败')
+    }
+  } catch (error) {
+    console.error('增加积分失败:', error)
+    ElMessage.error('增加积分失败，请稍后重试')
+  }
 }
 
 async function startDraw(count){
   if (isDrawing.value) return
-  const cost = count === 10 ? 100 : 10
+  const cost = count === 10 ? 900 : 100
   if (points.value < cost){
     ElMessage.warning('积分不足')
     return
   }
-  isDrawing.value = true
-  savePoints(points.value - cost)
-  lastCount.value = count
-  showAnimation.value = true
+  
+  try {
+    isDrawing.value = true
+    lastCount.value = count
+    
+    // 调用后端抽卡API
+    const apiFunction = count === 10 ? cardApi.tenDraw : cardApi.singleDraw
+    const response = await apiFunction()
+    
+          if (response.success || response.code === 0) {
+        // 计算积分变化
+        const cost = count === 10 ? 900 : 100
+        const oldPoints = points.value
+        const newPoints = response.data.remaining_points
+        
+        // 更新积分
+        points.value = newPoints
+        
+        // 触发积分减少动画
+        pointsChange.value = { show: true, value: cost, type: 'subtract' }
+        setTimeout(() => {
+          pointsChange.value.show = false
+        }, 1500)
+        
+        // 保存抽卡结果并添加到用户卡组
+        if (count === 10) {
+          // 十连抽：draws是数组，每个元素包含card属性和其他信息
+          drawResults.value = response.data.draws.map(item => item.card)
+          // 将新卡牌添加到用户卡组
+          userCards.value.push(...drawResults.value)
+        } else {
+          // 单抽：response.data直接是卡牌信息
+          drawResults.value = [response.data.card || response.data]
+          // 将新卡牌添加到用户卡组
+          userCards.value.push(...drawResults.value)
+        }
+      
+      // 显示抽卡动画
+      showAnimation.value = true
+      
+      // 强制触发响应式更新
+      await nextTick()
+    } else {
+      ElMessage.error(response.message || '抽卡失败')
+    }
+  } catch (error) {
+    console.error('抽卡失败:', error)
+    ElMessage.error('抽卡失败，请稍后重试')
+  } finally {
+    isDrawing.value = false
+  }
 }
 
 function onAnimationComplete(results){
@@ -97,6 +189,24 @@ function onOverlayClose(){
   showOverlay.value = false
 }
 
+// 组件挂载时加载用户积分和卡组
+onMounted(async () => {
+  await loadUserPoints()
+  await loadUserCards()
+})
+
+// 加载用户卡组
+async function loadUserCards() {
+  try {
+    const response = await cardApi.getUserCollection()
+    if (response.success && response.data) {
+      userCards.value = response.data
+    }
+  } catch (error) {
+    console.error('获取用户卡组失败:', error)
+  }
+}
+
 
 </script>
 
@@ -106,6 +216,65 @@ function onOverlayClose(){
 .points .label{ font-size:12px; color:#666; }
 .points .value{ font-weight:700; color:#333; }
 .points :deep(.el-button.gbtn-mini){ padding:4px 8px; }
+
+/* 积分变化动画 */
+
+.points-change-animation {
+  position: absolute;
+  top: -20px;
+  right: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #10b981;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.points-change-animation.add {
+  color: #10b981;
+}
+
+.points-change-animation.subtract {
+  color: #ef4444;
+}
+
+.points-change-enter-active {
+  animation: pointsChangeIn 1.5s ease-out;
+}
+
+.points-change-leave-active {
+  animation: pointsChangeOut 0.3s ease-in;
+}
+
+@keyframes pointsChangeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0.8);
+  }
+  20% {
+    opacity: 1;
+    transform: translateY(-10px) scale(1.2);
+  }
+  80% {
+    opacity: 1;
+    transform: translateY(-20px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-30px) scale(0.8);
+  }
+}
+
+@keyframes pointsChangeOut {
+  0% {
+    opacity: 1;
+    transform: translateY(-30px) scale(0.8);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-40px) scale(0.6);
+  }
+}
 
 
 

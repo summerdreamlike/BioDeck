@@ -137,6 +137,55 @@ def delete_material(material_id):
         api.logger.error(f"删除教学资源失败: {str(e)}")
         raise ApiError('删除教学资源失败', code=ErrorCode.OPERATION_FAILED)
 
+# 上传课件
+@api.route('/materials/upload/courseware', methods=['POST'])
+@jwt_required()
+@roles_required(['admin', 'teacher'])
+def upload_courseware():
+    identity = get_jwt_identity()
+    
+    try:
+        # 检查是否有文件
+        if 'file' not in request.files:
+            raise ApiError('没有上传文件', code=ErrorCode.VALIDATION_ERROR)
+        
+        file = request.files['file']
+        
+        # 检查文件名是否为空
+        if file.filename == '':
+            raise ApiError('未选择文件', code=ErrorCode.VALIDATION_ERROR)
+        
+        # 获取其他表单数据
+        category_id = request.form.get('category_id', type=int)
+        description = request.form.get('description')
+        
+        # 处理标签（如果有）
+        tags = None
+        if 'tags' in request.form:
+            try:
+                import json
+                tags = json.loads(request.form['tags'])
+            except:
+                # 如果解析失败，忽略标签
+                pass
+        
+        # 上传课件
+        result = MaterialService.upload_courseware(
+            file=file,
+            uploader_id=identity['id'],
+            category_id=category_id,
+            description=description,
+            tags=tags
+        )
+        
+        return ok_response(result['material'], message='课件上传成功')
+    except ApiError:
+        raise
+    except Exception as e:
+        api.logger.error(f"上传课件失败: {str(e)}")
+        api.logger.error(traceback.format_exc())
+        raise ApiError('上传课件失败', code=ErrorCode.OPERATION_FAILED)
+
 # ================== 分类相关路由 ==================
 
 # 获取分类列表
