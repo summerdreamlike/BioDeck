@@ -46,7 +46,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted, nextTick, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
 import { CreditCard } from '@element-plus/icons-vue'
 import InteractiveCard from '@/components/InteractiveCard.vue'
@@ -69,6 +69,43 @@ const userCards = ref([]) // 用户拥有的卡牌
 const pointsAnimation = ref(false)
 const pointsChange = ref({ show: false, value: 0, type: 'add' })
 
+// 显示积分变化动画
+function showPointsChange(amount, type = 'add') {
+  pointsChange.value = {
+    show: true,
+    value: amount,
+    type: type
+  }
+  
+  // 3秒后隐藏动画
+  setTimeout(() => {
+    pointsChange.value.show = false
+  }, 3000)
+}
+
+// 监听积分变化事件
+function handlePointsUpdated(event) {
+  const { points, change, totalPoints, type } = event.detail
+  console.log('收到积分更新事件:', { points, change, totalPoints, type })
+  
+  // 更新积分显示
+  if (totalPoints !== undefined) {
+    // 优先使用后端返回的总积分
+    points.value = totalPoints
+    console.log(`使用后端总积分更新显示: ${totalPoints}`)
+  } else {
+    // 否则使用计算后的积分
+    points.value = points
+    console.log(`使用计算积分更新显示: ${points}`)
+  }
+  
+  // 如果是签到获得的积分，显示动画
+  if (type === 'daily_checkin') {
+    showPointsChange(change, 'add')
+    ElMessage.success(`签到积分已同步！当前积分: ${points.value}`)
+  }
+}
+
 async function loadUserPoints(){
   try {
     // 从后端获取用户积分
@@ -77,12 +114,17 @@ async function loadUserPoints(){
     if ((response && response.data && typeof response.data.points === 'number') || 
         (response && response.code === 0 && response.data && typeof response.data.points === 'number')) {
       points.value = response.data.points
+      
+      // 同步到本地存储
+      localStorage.setItem('userPoints', points.value.toString())
     } else {
       points.value = 100 // 默认积分
+      localStorage.setItem('userPoints', '100')
     }
   } catch (error) {
     console.error('获取用户积分失败:', error)
     points.value = 100 // 默认积分
+    localStorage.setItem('userPoints', '100')
   }
 }
 
@@ -99,22 +141,16 @@ async function addPoints(amount){
       // 更新前端积分显示
       points.value = response.data.points
       
-      ElMessage.success(`已获得 ${v} 积分`)
+      // 显示积分变化动画
+      showPointsChange(v, 'add')
       
-      // 触发积分增加动画
-      pointsChange.value = { show: true, value: v, type: 'add' }
-      setTimeout(() => {
-        pointsChange.value.show = false
-      }, 1500)
-      
-      // 重新加载用户积分确保数据同步
-      await loadUserPoints()
+      ElMessage.success(`获得 ${v} 积分！`)
     } else {
-      ElMessage.error(response?.message || '增加积分失败')
+      ElMessage.error('积分增加失败')
     }
   } catch (error) {
-    console.error('增加积分失败:', error)
-    ElMessage.error('增加积分失败，请稍后重试')
+    console.error('积分增加失败:', error)
+    ElMessage.error('积分增加失败，请重试')
   }
 }
 
@@ -190,9 +226,16 @@ function onOverlayClose(){
 }
 
 // 组件挂载时加载用户积分和卡组
-onMounted(async () => {
-  await loadUserPoints()
-  await loadUserCards()
+onMounted(() => {
+  loadUserPoints()
+  
+  // 注册积分变化事件监听器
+  window.addEventListener('points-updated', handlePointsUpdated)
+})
+
+onBeforeUnmount(() => {
+  // 清理积分变化事件监听器
+  window.removeEventListener('points-updated', handlePointsUpdated)
 })
 
 // 加载用户卡组

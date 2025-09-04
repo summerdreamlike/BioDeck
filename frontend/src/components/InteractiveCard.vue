@@ -43,7 +43,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 
 // Props定义
 /* global defineProps */
@@ -157,6 +157,11 @@ const props = defineProps({
   enableLaser: {
     type: Boolean,
     default: true
+  },
+  // 是否启用斜向光效果
+  enableDiagonalLight: {
+    type: Boolean,
+    default: true
   }
 })
 
@@ -183,6 +188,8 @@ function onEnter() {
   if (artRef.value) {
     artRef.value.style.setProperty('--per', '0%')
     artRef.value.style.setProperty('--gold-opacity', '0')
+    // 设置斜向光透明度
+    artRef.value.style.setProperty('--diagonal-light-opacity', props.enableDiagonalLight ? '1' : '0')
   }
 }
 
@@ -224,6 +231,10 @@ function onMove(e) {
     } else {
       art.style.setProperty('--gold-opacity', '0')
     }
+    
+    // 设置斜向光透明度和可见性
+    art.style.setProperty('--diagonal-light-opacity', props.enableDiagonalLight ? '1' : '0')
+    art.style.setProperty('--diagonal-light-visibility', props.enableDiagonalLight ? 'visible' : 'hidden')
   })
 }
 
@@ -237,6 +248,8 @@ function onLeave() {
   if (artRef.value) {
     artRef.value.style.setProperty('--per', '0%')
     artRef.value.style.setProperty('--gold-opacity', '0')
+    // 设置斜向光透明度
+    artRef.value.style.setProperty('--diagonal-light-opacity', props.enableDiagonalLight ? '1' : '0')
   }
 }
 
@@ -255,6 +268,12 @@ function onImageLoad(e) {
   imageLoaded.value = true
   // 重置缩放比例
   currentScale.value = 1.0
+  
+  // 初始化斜向光状态
+  if (artRef.value) {
+    artRef.value.style.setProperty('--diagonal-light-opacity', props.enableDiagonalLight ? '1' : '0')
+    artRef.value.style.setProperty('--diagonal-light-visibility', props.enableDiagonalLight ? 'visible' : 'hidden')
+  }
 }
 
 // 计算缩放后的图片尺寸
@@ -330,6 +349,14 @@ const cardStyle = computed(() => {
       aspectRatio: props.aspectRatio,
       borderRadius: props.borderRadius
     }
+  }
+})
+
+// 组件挂载时初始化斜向光状态
+onMounted(() => {
+  if (artRef.value) {
+    artRef.value.style.setProperty('--diagonal-light-opacity', props.enableDiagonalLight ? '1' : '0')
+    artRef.value.style.setProperty('--diagonal-light-visibility', props.enableDiagonalLight ? 'visible' : 'hidden')
   }
 })
 </script>
@@ -471,6 +498,15 @@ const cardStyle = computed(() => {
   opacity: 0.3;
 }
 
+/* 当斜向光被禁用时，完全隐藏高光效果 */
+.card-art[style*="--diagonal-light-opacity: 0"]::before {
+  display: none !important;
+}
+
+.card-art[style*="--diagonal-light-visibility: hidden"]::before {
+  display: none !important;
+}
+
 /* 高光覆层使用 --per 控制位置 */
 .card-art::before {
   content: "";
@@ -498,6 +534,10 @@ const cardStyle = computed(() => {
   filter: blur(0.3px);
   animation: shimmer 2s ease-in-out infinite;
   z-index: 1;
+  /* 根据enableDiagonalLight属性控制显示 */
+  opacity: var(--diagonal-light-opacity, 1);
+  /* 当斜向光被禁用时，完全隐藏 */
+  visibility: var(--diagonal-light-visibility, visible);
 }
 
 /* 闪银色轮廓 - 只在有高光时显示 */

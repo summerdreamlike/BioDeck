@@ -3,17 +3,25 @@
     <div class="three-wrap" ref="wrapRef">
       <canvas ref="canvasRef" class="three-canvas"></canvas>
     </div>
+    
+    <!-- 每日签到弹窗 -->
+    <DailyCheckinModal 
+      :visible="showDailyCheckin"
+      @close="showDailyCheckin = false"
+      @points-earned="handlePointsEarned"
+    />
   </div>
-  
 </template>
 
 <script setup>
 import { onMounted, onBeforeUnmount, ref } from 'vue'
 import * as THREE from 'three'
 import { useRouter } from 'vue-router'
+import DailyCheckinModal from '@/components/DailyCheckinModal.vue'
 
 const wrapRef = ref(null)
 const canvasRef = ref(null)
+const showDailyCheckin = ref(false)
 
 // 资源与链接（将 0.png-7.png 放在 src/assets/img/ 下）
 const ctx = require.context('../../assets/img', false, /\.(png|jpe?g)$/)
@@ -62,6 +70,116 @@ let targetAngle = 0
 let startX = 0
 let startAngleSnapshot = 0
 let activeIndex = 0
+
+// 处理签到获得的积分
+function handlePointsEarned(data) {
+  console.log('签到获得积分:', data)
+  
+  // 更新本地存储，记录积分变化
+  if (data && data.points) {
+    // 如果有总积分信息，直接使用；否则累加
+    let newPoints
+    if (data.totalPoints !== undefined) {
+      newPoints = data.totalPoints
+      console.log(`使用后端返回的总积分: ${newPoints}`)
+    } else {
+      const currentPoints = parseInt(localStorage.getItem('userPoints') || '0')
+      newPoints = currentPoints + data.points
+      console.log(`累加积分: ${currentPoints} + ${data.points} = ${newPoints}`)
+    }
+    
+    localStorage.setItem('userPoints', newPoints.toString())
+    
+    // 通知其他组件积分已更新
+    window.dispatchEvent(new CustomEvent('points-updated', {
+      detail: {
+        points: newPoints,
+        change: data.points,
+        totalPoints: data.totalPoints,
+        type: data.type
+      }
+    }))
+    
+    console.log(`积分已更新: ${newPoints}`)
+  }
+}
+
+// 检查是否需要显示每日签到
+function checkDailyCheckin() {
+  console.log('检查每日签到...')
+  
+  // 获取当前用户ID（从JWT token中解析）
+  const token = localStorage.getItem('token')
+  if (!token) {
+    console.log('未找到用户token，跳过每日签到检查')
+    return
+  }
+  
+  // 检查本地存储，判断今天是否已经显示过签到弹窗
+  const today = new Date().toDateString()
+  const lastCheckinDate = localStorage.getItem('lastCheckinDate')
+  const lastCheckinUser = localStorage.getItem('lastCheckinUser')
+  
+  // 从token中提取用户信息（简单解析）
+  let currentUser = 'unknown'
+  try {
+    const tokenPayload = JSON.parse(atob(token.split('.')[1]))
+    currentUser = tokenPayload.sub || tokenPayload.identity || 'unknown'
+  } catch (e) {
+    console.log('无法解析token，使用默认用户标识')
+  }
+  
+  console.log('今天日期:', today)
+  console.log('上次签到日期:', lastCheckinDate)
+  console.log('上次签到用户:', lastCheckinUser)
+  console.log('当前用户:', currentUser)
+  
+  // 判断是否应该显示签到弹窗
+  const shouldShowCheckin = (
+    lastCheckinDate !== today || // 今天还没显示过
+    lastCheckinUser !== currentUser || // 或者用户已切换
+    !lastCheckinDate || // 或者从未显示过
+    !lastCheckinUser // 或者从未记录过用户
+  )
+  
+  console.log('是否应该显示签到:', shouldShowCheckin)
+  
+  if (shouldShowCheckin) {
+    // 延迟显示，让页面先加载完成
+    console.log('准备显示签到弹窗...')
+    setTimeout(() => {
+      console.log('显示签到弹窗，showDailyCheckin设置为true')
+      showDailyCheckin.value = true
+      localStorage.setItem('lastCheckinDate', today)
+      localStorage.setItem('lastCheckinUser', currentUser)
+    }, 1000)
+  } else {
+    console.log('今天已经显示过签到弹窗，不重复显示')
+  }
+}
+
+// 监听用户切换事件
+function setupUserChangeListener() {
+  // 监听storage变化，检测用户切换
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'token' || e.key === 'lastCheckinUser') {
+      console.log('检测到用户切换，重新检查每日签到')
+      setTimeout(() => {
+        checkDailyCheckin()
+      }, 500)
+    }
+  })
+  
+  // 监听路由变化，检测页面切换
+  const originalPushState = history.pushState
+  history.pushState = function(...args) {
+    originalPushState.apply(history, args)
+    console.log('路由变化，检查是否需要显示每日签到')
+    setTimeout(() => {
+      checkDailyCheckin()
+    }, 500)
+  }
+}
 
 function lerp(a, b, t){
   return a + (b - a) * t
@@ -220,6 +338,8 @@ async function init() {
   window.addEventListener('resize', onResize)
 
   animate()
+  checkDailyCheckin() // 初始化时检查每日签到
+  setupUserChangeListener() // 初始化时设置用户切换监听器
 }
 
 function onDblClickOpen(){
@@ -375,6 +495,8 @@ function updateHover(){
   }
   hoveredIndex = idx
 }
+
+
 </script>
 
 <style scoped>

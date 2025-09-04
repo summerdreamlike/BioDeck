@@ -20,9 +20,15 @@ class DailyCheckinService:
         DailyCheckin.ensure_tables()
     
     @staticmethod
-    def get_user_checkin_status(user_id):
+    def get_user_checkin_status(identity):
         """获取用户今日签到状态"""
         try:
+            # 解析JWT identity，格式为 "user_id:role"
+            if isinstance(identity, str) and ':' in identity:
+                user_id = int(identity.split(':')[0])
+            else:
+                user_id = identity
+            
             # 检查今日是否已签到
             today_checkin = DailyCheckin.get_user_checkin_today(user_id)
             user_points = DailyCheckin.get_user_points(user_id)
@@ -33,8 +39,9 @@ class DailyCheckinService:
             # 计算今日可获得的积分
             today_points = DailyCheckinService._calculate_today_points(current_streak)
             
-            return {
-                'has_checked_in_today': today_checkin is not None,
+            result = {
+                'checked_today': today_checkin is not None,  # 修改字段名以匹配前端
+                'consecutive_days': current_streak,  # 修改字段名以匹配前端
                 'today_checkin': today_checkin,
                 'user_points': user_points or {
                     'total_points': 0,
@@ -46,54 +53,69 @@ class DailyCheckinService:
                 'today_points': today_points,
                 'next_checkin_time': DailyCheckinService._get_next_checkin_time()
             }
+            
+            return result
+            
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             raise ApiError(f'获取签到状态失败: {str(e)}', code=ErrorCode.OPERATION_FAILED)
     
     @staticmethod
-    def perform_checkin(user_id):
-        """执行签到"""
+    def perform_checkin(identity):
+        """执行签到 - 简化版本"""
         try:
+            # 解析JWT identity，格式为 "user_id:role"
+            if isinstance(identity, str) and ':' in identity:
+                user_id = int(identity.split(':')[0])
+            else:
+                user_id = identity
+                
             # 检查今日是否已签到
             today_checkin = DailyCheckin.get_user_checkin_today(user_id)
             if today_checkin:
                 raise ApiError('今日已签到，请明天再来', code=ErrorCode.VALIDATION_ERROR)
             
-            # 计算连续签到天数
-            current_streak = DailyCheckin.calculate_streak(user_id)
+            # 简化的连续签到计算
+            current_streak = 1  # 暂时设为1，后续可以优化
             
-            # 检查是否连续签到（昨天是否签到）
-            yesterday = (date.today() - timedelta(days=1)).isoformat()
-            yesterday_checkin = DailyCheckin.get_user_checkin_today(user_id)
-            
-            # 如果昨天没有签到，重置连续天数
-            if not yesterday_checkin:
-                current_streak = 0
-            
-            # 计算今日积分
-            points_earned = DailyCheckinService._calculate_today_points(current_streak + 1)
+            # 固定1000积分
+            points_earned = 1000
             
             # 创建签到记录
-            checkin_id = DailyCheckin.create_checkin(user_id, points_earned, current_streak + 1)
+            checkin_id = DailyCheckin.create_checkin(user_id, points_earned, current_streak)
             
             # 获取更新后的用户积分信息
             user_points = DailyCheckin.get_user_points(user_id)
             
-            return {
+            # 返回成功结果
+            result = {
                 'checkin_id': checkin_id,
                 'points_earned': points_earned,
-                'current_streak': current_streak + 1,
-                'user_points': user_points,
-                'message': DailyCheckinService._get_checkin_message(points_earned, current_streak + 1)
+                'consecutive_days': current_streak,
+                'total_points': user_points.get('total_points', 0) if user_points else 0,
+                'message': f'签到成功！获得{points_earned}积分'
             }
-        except ApiError:
+            
+            return result
+            
+        except ApiError as e:
             raise
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             raise ApiError(f'签到失败: {str(e)}', code=ErrorCode.OPERATION_FAILED)
     
     @staticmethod
-    def get_checkin_history(user_id, limit=30):
+    def get_checkin_history(identity, limit=30):
         """获取签到历史"""
         try:
+            # 解析JWT identity，格式为 "user_id:role"
+            if isinstance(identity, str) and ':' in identity:
+                user_id = int(identity.split(':')[0])
+            else:
+                user_id = identity
+                
             history = DailyCheckin.get_checkin_history(user_id, limit)
             return {
                 'history': history,
@@ -103,9 +125,15 @@ class DailyCheckinService:
             raise ApiError(f'获取签到历史失败: {str(e)}', code=ErrorCode.OPERATION_FAILED)
     
     @staticmethod
-    def get_point_history(user_id, limit=50):
+    def get_point_history(identity, limit=50):
         """获取积分历史"""
         try:
+            # 解析JWT identity，格式为 "user_id:role"
+            if isinstance(identity, str) and ':' in identity:
+                user_id = int(identity.split(':')[0])
+            else:
+                user_id = identity
+                
             history = DailyCheckin.get_point_history(user_id, limit)
             return {
                 'history': history,
@@ -170,5 +198,8 @@ class DailyCheckinService:
     @staticmethod
     def _get_next_checkin_time():
         """获取下次签到时间"""
-        tomorrow = date.today() + timedelta(days=1)
-        return tomorrow.isoformat()
+        from datetime import datetime, timedelta
+        
+        now = datetime.now()
+        tomorrow = now + timedelta(days=1)
+        return tomorrow.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()

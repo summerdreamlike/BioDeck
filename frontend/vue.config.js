@@ -38,6 +38,32 @@ module.exports = defineConfig({
       splitChunks: {
         chunks: 'all'
       }
+    },
+    module: {
+      rules: [
+        {
+          test: /\.(pptx|ppt|docx|xlsx|pdf)$/,
+          type: 'asset/resource',
+          generator: {
+            filename: 'static/media/[name].[hash:8][ext]'
+          }
+        }
+      ]
     }
+  },
+  
+  // 链式配置
+  chainWebpack: config => {
+    // 排除特定文件类型，避免webpack尝试解析内容
+    config.module
+      .rule('exclude-docs')
+      .test(/\.(pptx|ppt|docx|xlsx|pdf)$/)
+      .use('file-loader')
+      .loader('file-loader')
+      .options({
+        name: 'static/media/[name].[hash:8].[ext]',
+        esModule: false
+      })
+      .end()
   }
 }) 

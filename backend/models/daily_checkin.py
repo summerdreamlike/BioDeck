@@ -102,44 +102,57 @@ class DailyCheckin(BaseModel):
         conn = cls.get_db()
         cursor = conn.cursor()
         
-        today = date.today().isoformat()
-        now = datetime.now().isoformat()
-        
-        # 插入签到记录
-        cursor.execute('''
-            INSERT INTO daily_checkins (user_id, checkin_date, checkin_time, points_earned, streak_days)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (user_id, today, now, points_earned, streak_days))
-        
-        checkin_id = cursor.lastrowid
-        
-        # 更新或创建用户积分记录
-        cursor.execute('''
-            INSERT OR REPLACE INTO user_points 
-            (user_id, total_points, points_earned_today, last_checkin_date, current_streak, longest_streak, updated_at)
-            VALUES (?, 
-                    COALESCE((SELECT total_points FROM user_points WHERE user_id = ?), 0) + ?,
-                    ?,
-                    ?,
-                    ?,
-                    CASE WHEN ? > COALESCE((SELECT longest_streak FROM user_points WHERE user_id = ?), 0) 
-                         THEN ? 
-                         ELSE COALESCE((SELECT longest_streak FROM user_points WHERE user_id = ?), 0) 
-                    END,
-                    CURRENT_TIMESTAMP)
-        ''', (user_id, user_id, points_earned, points_earned, today, streak_days, 
-              streak_days, user_id, streak_days, user_id))
-        
-        # 记录积分历史
-        cursor.execute('''
-            INSERT INTO point_history (user_id, points_change, change_type, description)
-            VALUES (?, ?, 'daily_checkin', '每日签到奖励')
-        ''', (user_id, points_earned))
-        
-        conn.commit()
-        conn.close()
-        
-        return checkin_id
+        try:
+            today = date.today().isoformat()
+            now = datetime.now().isoformat()
+            
+            # 插入签到记录
+            cursor.execute('''
+                INSERT INTO daily_checkins (user_id, checkin_date, checkin_time, points_earned, streak_days)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (user_id, today, now, points_earned, streak_days))
+            
+            checkin_id = cursor.lastrowid
+            
+            # 获取用户当前积分（从users表）
+            cursor.execute('''
+                SELECT points FROM users WHERE id = ?
+            ''', (user_id,))
+            
+            current_points_result = cursor.fetchone()
+            current_points = current_points_result[0] if current_points_result else 0
+            
+            # 计算新积分
+            new_total_points = current_points + points_earned
+            
+            # 更新users表中的积分
+            cursor.execute('''
+                UPDATE users SET points = ? WHERE id = ?
+            ''', (new_total_points, user_id))
+            
+            # 更新或创建用户积分记录
+            cursor.execute('''
+                INSERT OR REPLACE INTO user_points 
+                (user_id, total_points, points_earned_today, last_checkin_date, current_streak, longest_streak, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            ''', (user_id, new_total_points, points_earned, today, streak_days, streak_days))
+            
+            # 记录积分历史
+            cursor.execute('''
+                INSERT INTO point_history (user_id, points_change, change_type, description)
+                VALUES (?, ?, 'daily_checkin', '每日签到奖励')
+            ''', (user_id, points_earned))
+            
+            conn.commit()
+            
+            return checkin_id
+            
+        except Exception as e:
+            conn.rollback()
+            print(f"创建签到记录失败: {str(e)}")
+            raise e
+        finally:
+            conn.close()
     
     @classmethod
     def get_checkin_history(cls, user_id, limit=30):
@@ -180,31 +193,35 @@ class DailyCheckin(BaseModel):
     @classmethod
     def calculate_streak(cls, user_id):
         """计算用户连续签到天数"""
-        conn = cls.get_db()
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-            SELECT checkin_date FROM daily_checkins 
-            WHERE user_id = ? 
-            ORDER BY checkin_date DESC
-        ''', (user_id,))
-        
-        dates = [row[0] for row in cursor.fetchall()]
-        conn.close()
-        
-        if not dates:
-            return 0
-        
-        # 计算连续天数
-        streak = 1
-        current_date = datetime.strptime(dates[0], '%Y-%m-%d').date()
-        
-        for i in range(1, len(dates)):
-            prev_date = datetime.strptime(dates[i], '%Y-%m-%d').date()
-            if (current_date - prev_date).days == 1:
-                streak += 1
-                current_date = prev_date
-            else:
-                break
-        
-        return streak
+        try:
+            conn = cls.get_db()
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                SELECT checkin_date FROM daily_checkins 
+                WHERE user_id = ? 
+                ORDER BY checkin_date DESC
+            ''', (user_id,))
+            
+            dates = [row[0] for row in cursor.fetchall()]
+            conn.close()
+            
+            if not dates:
+                return 0
+            
+            # 计算连续天数
+            streak = 1
+            current_date = datetime.strptime(dates[0], '%Y-%m-%d').date()
+            
+            for i in range(1, len(dates)):
+                prev_date = datetime.strptime(dates[i], '%Y-%m-%d').date()
+                if (current_date - prev_date).days == 1:
+                    streak += 1
+                    current_date = prev_date
+                else:
+                    break
+            
+            return streak
+        except Exception as e:
+            print(f"计算连续签到天数失败: {str(e)}")
+            return 0  # 出错时返回0

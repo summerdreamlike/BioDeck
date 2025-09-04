@@ -1,6 +1,10 @@
 <template>
   <div class="level-page">
-    <!-- 顶部导航栏 -->
+    <!-- 背景图片 -->
+    <div class="background-image"></div>
+    
+    <!-- 暂时隐藏其他元素 -->
+    <!--
     <div class="top-nav">
       <div class="nav-left">
         <h1 class="chapter-title">光合作用</h1>
@@ -14,7 +18,6 @@
       </div>
     </div>
 
-    <!-- 关卡内容 -->
     <div class="levels-container">
       <div class="levels-grid">
         <div class="level-card" v-for="level in levels" :key="level.id" @click="selectLevel(level)">
@@ -38,7 +41,6 @@
       </div>
     </div>
 
-    <!-- 生物图书馆弹窗 -->
     <div class="library-modal" v-if="showLibrary" @click="showLibrary = false">
       <div class="library-content" @click.stop>
         <div class="library-header">
@@ -47,7 +49,7 @@
         </div>
         <div class="library-body">
           <div class="ppt-list">
-            <div class="ppt-item" v-for="ppt in pptFiles" :key="ppt.id" @click="openPPT(ppt)">
+            <div class="ppt-item" v-for="ppt in pptResources" :key="ppt.id" @click="openDocument(ppt)">
               <div class="ppt-icon">📊</div>
               <div class="ppt-info">
                 <h3 class="ppt-name">{{ ppt.name }}</h3>
@@ -63,30 +65,18 @@
       </div>
     </div>
 
-    <!-- PPT查看器弹窗 -->
-    <div class="ppt-viewer-modal" v-if="showPPTViewer" @click="showPPTViewer = false">
-      <div class="ppt-viewer-content" @click.stop>
-        <div class="ppt-viewer-header">
-          <h3>{{ currentPPT?.name }}</h3>
-          <button class="close-btn" @click="showPPTViewer = false">×</button>
-        </div>
-        <div class="ppt-viewer-body">
-          <iframe 
-            v-if="currentPPT"
-            :src="currentPPT.url" 
-            width="100%" 
-            height="600px" 
-            frameborder="0"
-            allowfullscreen>
-          </iframe>
-        </div>
-      </div>
-    </div>
+    <DocumentViewer
+      v-if="showDocumentViewer"
+      :document="currentDocument"
+      @close="showDocumentViewer = false"
+    />
+    -->
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue'
+import DocumentViewer from '@/components/DocumentViewer.vue'
 
 const showLibrary = ref(false)
 const showPPTViewer = ref(false)
@@ -144,44 +134,53 @@ const levels = ref([
   }
 ])
 
-// PPT文件列表
-const pptFiles = ref([
+// 课件资源
+const pptResources = ref([
   {
     id: 1,
     name: '光合作用基础理论.ppt',
     description: '光合作用的基本原理和过程详解',
     size: '2.3MB',
-    url: '/src/assets/课件/光合作用基础理论.ppt'
+    url: '/src/assets/课件/光合作用/光合作用基础理论.ppt',
+    status: 'available'
   },
   {
     id: 2,
     name: '光合色素研究.ppt',
     description: '叶绿素等光合色素的结构和功能',
     size: '1.8MB',
-    url: '/src/assets/课件/光合色素研究.ppt'
+    url: '/src/assets/课件/光合作用/光合色素研究.ppt',
+    status: 'available'
   },
   {
     id: 3,
     name: '光反应机制.ppt',
     description: '光反应阶段的详细机制分析',
     size: '3.1MB',
-    url: '/src/assets/课件/光反应机制.ppt'
+    url: '/src/assets/课件/光合作用/光反应机制.ppt',
+    status: 'available'
   },
   {
     id: 4,
     name: '暗反应过程.ppt',
     description: '卡尔文循环和糖类合成过程',
     size: '2.7MB',
-    url: '/src/assets/课件/暗反应过程.ppt'
+    url: '/src/assets/课件/光合作用/暗反应过程.ppt',
+    status: 'available'
   },
   {
     id: 5,
     name: '光合作用实验指导.ppt',
     description: '相关实验的操作步骤和注意事项',
     size: '1.5MB',
-    url: '/src/assets/课件/光合作用实验指导.ppt'
+    url: '/src/assets/课件/光合作用/光合作用实验指导.ppt',
+    status: 'available'
   }
 ])
+
+// 文档查看器相关
+const showDocumentViewer = ref(false)
+const currentDocument = ref(null)
 
 // 选择关卡
 function selectLevel(level) {
@@ -193,24 +192,38 @@ function selectLevel(level) {
   // 这里可以添加跳转到具体关卡页面的逻辑
 }
 
-// 打开PPT
-function openPPT(ppt) {
-  console.log('打开PPT:', ppt.name)
-  currentPPT.value = ppt
-  showPPTViewer.value = true
-  showLibrary.value = false
+// 打开文档
+function openDocument(doc) {
+  currentDocument.value = doc
+  showDocumentViewer.value = true
 }
 </script>
 
 <style scoped>
 .level-page {
-  min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 20px;
-  color: #333;
+  min-height: 81vh;
+  width: 12000px;
+  position: relative;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
-/* 顶部导航栏 */
+/* 背景图片 */
+.background-image {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 12000px;
+  height: 100vh;
+  background-image: url('@/assets/img/levelt/levelt5-background.jpg');
+  background-size: auto 100vh;
+  background-repeat: repeat-x;
+  background-position: 0 0;
+  z-index: -1;
+}
+
+/* 暂时隐藏其他样式 */
+/*
 .top-nav {
   display: flex;
   justify-content: space-between;
@@ -266,7 +279,6 @@ function openPPT(ppt) {
   font-size: 20px;
 }
 
-/* 关卡容器 */
 .levels-container {
   background: rgba(255, 255, 255, 0.95);
   border-radius: 20px;
@@ -407,7 +419,6 @@ function openPPT(ppt) {
   color: #64748b;
 }
 
-/* 生物图书馆弹窗 - 全屏 */
 .library-modal {
   position: fixed;
   top: 0;
@@ -569,7 +580,6 @@ function openPPT(ppt) {
   box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
 }
 
-/* PPT查看器弹窗 */
 .ppt-viewer-modal {
   position: fixed;
   top: 0;
@@ -615,7 +625,6 @@ function openPPT(ppt) {
   background: #f8fafc;
 }
 
-/* 响应式设计 */
 @media (max-width: 768px) {
   .levels-grid {
     grid-template-columns: 1fr;
@@ -651,6 +660,7 @@ function openPPT(ppt) {
     gap: 16px;
   }
 }
+*/
 </style>
 
 

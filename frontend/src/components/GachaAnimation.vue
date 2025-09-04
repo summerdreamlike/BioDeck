@@ -95,6 +95,15 @@ function resolveImageUrl(url) {
   if (!url) return ''
   
   try {
+    // 检查是否为图片文件
+    const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg']
+    const isImage = imageExtensions.some(ext => url.toLowerCase().includes(ext))
+    
+    if (!isImage) {
+      console.warn('非图片文件:', url)
+      return ''
+    }
+    
     // 使用require动态导入图片
     const cleanPath = url.replace(/^assets\//, '')
     return require(`@/assets/${cleanPath}`)

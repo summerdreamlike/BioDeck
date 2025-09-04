@@ -83,7 +83,9 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { dailyCheckinApi } from '@/api/dailyCheckin.js'
+import { getUserCollectionStats } from '@/api/cards.js'
 
 // 成就分类配置
 const categories = ref([
@@ -95,7 +97,7 @@ const categories = ref([
   { id: '关卡', name: '关卡', icon: '🚀' }
 ])
 
-// 成就数据配置
+  // 成就数据配置
 const achievements = ref([
   // 收藏类成就
   {
@@ -103,48 +105,52 @@ const achievements = ref([
     title: '初级收藏家',
     description: '收集10张不同卡牌',
     icon: '📚',
-    current: 8,
+    current: 0,
     target: 10,
-    progress: 80,
+    progress: 0,
     completed: false,
     reward: '解锁稀有卡牌',
-    category: '收藏'
+    category: '收藏',
+    apiKey: 'total_cards'
   },
   {
     id: 6,
     title: '收藏达人',
-    description: '拥有5张SSR卡牌',
+    description: '拥有5张SR卡牌',
     icon: '⭐',
-    current: 3,
+    current: 0,
     target: 5,
-    progress: 60,
+    progress: 0,
     completed: false,
     reward: '专属成就徽章',
-    category: '收藏'
+    category: '收藏',
+    apiKey: 'sr_cards'
   },
   {
     id: 9,
     title: '收藏狂人',
-    description: '收集500张卡牌',
+    description: '收集50张卡牌',
     icon: '🃏',
-    current: 287,
-    target: 500,
-    progress: 57,
+    current: 0,
+    target: 50,
+    progress: 0,
     completed: false,
     reward: '收藏大师',
-    category: '收藏'
+    category: '收藏',
+    apiKey: 'total_cards'
   },
   {
     id: 16,
     title: '传奇收藏家',
-    description: '收集所有SSR卡牌',
+    description: '收集所有UR卡牌',
     icon: '🌟',
-    current: 8,
-    target: 12,
-    progress: 67,
+    current: 0,
+    target: 5,
+    progress: 0,
     completed: false,
     reward: '传奇之光',
-    category: '收藏'
+    category: '收藏',
+    apiKey: 'ur_cards'
   },
   
   // 卡组类成就
@@ -153,12 +159,13 @@ const achievements = ref([
     title: '卡组大师',
     description: '完成3个完整卡组',
     icon: '🏆',
-    current: 2,
+    current: 0,
     target: 3,
-    progress: 67,
+    progress: 0,
     completed: false,
     reward: '特殊卡组封面',
-    category: '卡组'
+    category: '卡组',
+    apiKey: 'complete_decks'
   },
   
   // 日常类成就
@@ -167,24 +174,26 @@ const achievements = ref([
     title: '连续登录',
     description: '连续登录7天',
     icon: '🔥',
-    current: 5,
+    current: 0,
     target: 7,
-    progress: 71,
+    progress: 0,
     completed: false,
     reward: '每日抽卡次数+1',
-    category: '日常'
+    category: '日常',
+    apiKey: 'consecutive_days'
   },
   {
     id: 14,
     title: '时间旅行者',
     description: '连续登录一个月',
     icon: '⏰',
-    current: 5,
+    current: 0,
     target: 30,
-    progress: 56,
+    progress: 0,
     completed: false,
     reward: '时间徽章',
-    category: '日常'
+    category: '日常',
+    apiKey: 'consecutive_days'
   },
   
   // 解锁类成就
@@ -193,24 +202,26 @@ const achievements = ref([
     title: '完美解锁',
     description: '解锁30张卡牌',
     icon: '💎',
-    current: 20,
+    current: 0,
     target: 30,
-    progress: 67,
+    progress: 0,
     completed: false,
     reward: '限定头像框',
-    category: '解锁'
+    category: '解锁',
+    apiKey: 'total_cards'
   },
   {
     id: 19,
     title: '解锁专家',
-    description: '解锁100张卡牌',
+    description: '解锁50张卡牌',
     icon: '🔓',
-    current: 20,
-    target: 1000,
-    progress: 57,
+    current: 0,
+    target: 50,
+    progress: 0,
     completed: false,
     reward: '解锁大师',
-    category: '解锁'
+    category: '解锁',
+    apiKey: 'total_cards'
   },
   
   // 关卡类成就
@@ -219,9 +230,9 @@ const achievements = ref([
     title: '知识探索者',
     description: '完成所有普通关卡',
     icon: '🚀',
-    current: 6,
-    target: 8,
-    progress: 75,
+    current: 118,
+    target: 154,
+    progress: 0,
     completed: false,
     reward: '高级卡牌包',
     category: '关卡'
@@ -231,9 +242,9 @@ const achievements = ref([
     title: '挑战者',
     description: '完成所有BOSS关卡',
     icon: '🔥',
-    current: 3,
-    target: 6,
-    progress: 50,
+    current: 6,
+    target: 8,
+    progress: 0,
     completed: false,
     reward: '挑战者称号',
     category: '关卡'
@@ -243,16 +254,16 @@ const achievements = ref([
     title: '关卡征服者',
     description: '完成所有关卡',
     icon: '🏁',
-    current: 45,
-    target: 60,
-    progress: 75,
+    current: 125,
+    target: 160,
+    progress: 0,
     completed: false,
     reward: '征服者称号',
     category: '关卡'
   }
 ])
 
-// 响应式状态
+// 筛选器状态
 const selectedCategory = ref('all')
 const justUnlockedId = ref(null)
 
@@ -261,28 +272,117 @@ const filteredAchievements = computed(() => {
   if (selectedCategory.value === 'all') {
     return achievements.value
   }
-  return achievements.value.filter(a => a.category === selectedCategory.value)
+  return achievements.value.filter(achievement => achievement.category === selectedCategory.value)
 })
 
-const completedCount = computed(() => achievements.value.filter(a => a.completed).length)
-const totalCount = computed(() => achievements.value.length)
-const completionRate = computed(() => Math.round((completedCount.value / totalCount.value) * 100))
+const completedCount = computed(() => {
+  return achievements.value.filter(achievement => achievement.completed).length
+})
 
-// 成就解锁功能
+const totalCount = computed(() => {
+  return achievements.value.length
+})
+
+const completionRate = computed(() => {
+  if (totalCount.value === 0) return 0
+  return Math.round((completedCount.value / totalCount.value) * 100)
+})
+
+// 从后端获取连续登录天数
+async function loadConsecutiveDays() {
+  try {
+    const response = await dailyCheckinApi.getStatus()
+    if (response && response.data) {
+      const consecutiveDays = response.data.consecutive_days || 0
+      
+      // 更新相关成就的数据
+      achievements.value.forEach(achievement => {
+        if (achievement.apiKey === 'consecutive_days') {
+          achievement.current = consecutiveDays
+        }
+      })
+      
+      // 计算所有成就进度
+      calculateAllProgress()
+    }
+  } catch (error) {
+    console.error('获取连续登录天数失败:', error)
+  }
+}
+
+// 加载卡片收集数据
+async function loadCollectionData() {
+  try {
+    const response = await getUserCollectionStats()
+    
+    if (response && response.data && response.data.data) {
+      const stats = response.data.data
+      
+      // 更新相关成就的数据
+      achievements.value.forEach(achievement => {
+        if (achievement.apiKey) {
+          switch (achievement.apiKey) {
+            case 'total_cards':
+              achievement.current = stats.total_cards || 0
+              break
+            case 'sr_cards':
+              achievement.current = stats.rarity_stats?.SR || 0
+              break
+            case 'ur_cards':
+              achievement.current = stats.rarity_stats?.UR || 0
+              break
+            case 'complete_decks': {
+              // 计算完整卡组数量（每个稀有度至少有一张卡）
+              const completeDecks = Object.values(stats.rarity_stats || {}).filter(count => count > 0).length
+              achievement.current = completeDecks
+              break
+            }
+          }
+        }
+      })
+      
+      // 计算所有成就进度
+      calculateAllProgress()
+    }
+  } catch (error) {
+    console.error('获取卡片收集数据失败:', error)
+  }
+}
+
+// 计算所有成就的进度
+function calculateAllProgress() {
+  achievements.value.forEach(achievement => {
+    if (achievement.current !== undefined && achievement.target !== undefined) {
+      achievement.progress = Math.min(Math.round((achievement.current / achievement.target) * 100), 100)
+      achievement.completed = achievement.current >= achievement.target
+    }
+  })
+}
+
+// 解锁成就
 function unlock(achievement) {
   if (achievement.completed) return
   
-  // 更新成就状态
-  achievement.completed = true
-  achievement.progress = 100
-  achievement.current = achievement.target
+  // 这里可以添加解锁逻辑
+  console.log('解锁成就:', achievement.title)
   
-  // 触发解锁动画
+  // 模拟解锁成功
+  achievement.completed = true
   justUnlockedId.value = achievement.id
+  
+  // 3秒后清除解锁状态
   setTimeout(() => { 
     justUnlockedId.value = null 
-  }, 900)
+  }, 3000)
 }
+
+// 组件挂载时加载数据
+onMounted(() => {
+  loadConsecutiveDays()
+  loadCollectionData()
+  // 初始化时计算所有成就进度
+  calculateAllProgress()
+})
 </script>
 
 <style scoped>

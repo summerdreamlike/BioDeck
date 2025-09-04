@@ -1,7 +1,7 @@
 """
 每日签到相关路由
 """
-from flask import request, jsonify
+from flask import request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
 from ..api import api
@@ -24,13 +24,13 @@ def get_checkin_status():
         # 确保数据库表存在
         DailyCheckinService.ensure_tables()
         
-        result = DailyCheckinService.get_user_checkin_status(identity['id'])
+        result = DailyCheckinService.get_user_checkin_status(identity)
         return ok_response(result)
     except ApiError:
         raise
     except Exception as e:
-        api.logger.error(f"获取签到状态失败: {str(e)}")
-        api.logger.error(traceback.format_exc())
+        current_app.logger.error(f"获取签到状态失败: {str(e)}")
+        current_app.logger.error(traceback.format_exc())
         raise ApiError('获取签到状态失败', code=ErrorCode.OPERATION_FAILED)
 
 # 执行签到
@@ -44,13 +44,13 @@ def perform_checkin():
         # 确保数据库表存在
         DailyCheckinService.ensure_tables()
         
-        result = DailyCheckinService.perform_checkin(identity['id'])
+        result = DailyCheckinService.perform_checkin(identity)
         return ok_response(result, message='签到成功！')
     except ApiError:
         raise
     except Exception as e:
-        api.logger.error(f"签到失败: {str(e)}")
-        api.logger.error(traceback.format_exc())
+        current_app.logger.error(f"签到失败: {str(e)}")
+        current_app.logger.error(traceback.format_exc())
         raise ApiError('签到失败', code=ErrorCode.OPERATION_FAILED)
 
 # 获取签到历史
@@ -62,12 +62,12 @@ def get_checkin_history():
     limit = request.args.get('limit', 30, type=int)
     
     try:
-        result = DailyCheckinService.get_checkin_history(identity['id'], limit)
+        result = DailyCheckinService.get_checkin_history(identity, limit)
         return ok_response(result)
     except ApiError:
         raise
     except Exception as e:
-        api.logger.error(f"获取签到历史失败: {str(e)}")
+        current_app.logger.error(f"获取签到历史失败: {str(e)}")
         raise ApiError('获取签到历史失败', code=ErrorCode.OPERATION_FAILED)
 
 # 获取积分历史
@@ -79,12 +79,12 @@ def get_point_history():
     limit = request.args.get('limit', 50, type=int)
     
     try:
-        result = DailyCheckinService.get_point_history(identity['id'], limit)
+        result = DailyCheckinService.get_point_history(identity, limit)
         return ok_response(result)
     except ApiError:
         raise
     except Exception as e:
-        api.logger.error(f"获取积分历史失败: {str(e)}")
+        current_app.logger.error(f"获取积分历史失败: {str(e)}")
         raise ApiError('获取积分历史失败', code=ErrorCode.OPERATION_FAILED)
 
 # 获取积分排行榜
@@ -97,10 +97,8 @@ def get_leaderboard():
     try:
         result = DailyCheckinService.get_leaderboard(limit)
         return ok_response(result)
-    except ApiError:
-        raise
     except Exception as e:
-        api.logger.error(f"获取排行榜失败: {str(e)}")
+        current_app.logger.error(f"获取排行榜失败: {str(e)}")
         raise ApiError('获取排行榜失败', code=ErrorCode.OPERATION_FAILED)
 
 # ================== 管理员功能 ==================
@@ -122,7 +120,7 @@ def reset_user_points(user_id):
             'new_points': new_points
         }, message='积分重置成功')
     except Exception as e:
-        api.logger.error(f"重置积分失败: {str(e)}")
+        current_app.logger.error(f"重置积分失败: {str(e)}")
         raise ApiError('重置积分失败', code=ErrorCode.OPERATION_FAILED)
 
 # 获取签到统计（管理员功能）
@@ -140,5 +138,5 @@ def get_checkin_statistics():
             'total_points_distributed': 0
         })
     except Exception as e:
-        api.logger.error(f"获取统计信息失败: {str(e)}")
+        current_app.logger.error(f"获取统计信息失败: {str(e)}")
         raise ApiError('获取统计信息失败', code=ErrorCode.OPERATION_FAILED)
