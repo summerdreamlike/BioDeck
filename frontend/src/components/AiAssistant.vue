@@ -99,7 +99,7 @@
         <div class="resizer" :class="handleCorner" @mousedown.prevent="onResizeDown" @touchstart.prevent="onResizeDown" />
       </div>
     </transition>
-    </div>
+  </div>
   </teleport>
 </template>
 
@@ -569,12 +569,12 @@ onMounted(() => {
   } catch {
       // 异常情况下的默认位置（容器右下）
   const b = getStudentSideBounds()
-  const btnSize = 60
+    const btnSize = 60
   const margin = 6
-  pos.value = { 
+    pos.value = { 
     x: b.left + b.width - btnSize - margin, 
     y: b.top + b.height - btnSize - margin 
-  }
+    }
   }
   try {
     const ss = localStorage.getItem('aiAssistantSize_StudentSide')
@@ -603,10 +603,10 @@ onMounted(() => {
   const b = getStudentSideBounds()
   const maxW = Math.min(400, b.width * 0.9)
   const maxH = Math.min(b.height * 0.8, b.height - 100)
-  panelSize.value = { 
-    w: Math.min(360, maxW), 
+    panelSize.value = { 
+      w: Math.min(360, maxW), 
     h: Math.min(Math.round(b.height * 0.62), maxH) 
-  }
+    }
   }
   scrollToBottom()
   window.addEventListener('resize', placePanel)
@@ -617,24 +617,24 @@ onMounted(() => {
   
   // 使用 StudentSide 容器作为边界
   const b = getStudentSideBounds()
-  const btnSize = 60
+    const btnSize = 60
   const margin = 6
   const minX = b.left + margin
   const maxX = b.left + b.width - btnSize - margin
   const minY = b.top + margin
   const maxY = b.top + b.height - btnSize - margin
-  
-  // 只在超出边界时才调整，保持用户设置的位置
-  if (pos.value.x > maxX) pos.value.x = maxX
-  if (pos.value.y > maxY) pos.value.y = maxY
+    
+    // 只在超出边界时才调整，保持用户设置的位置
+    if (pos.value.x > maxX) pos.value.x = maxX
+    if (pos.value.y > maxY) pos.value.y = maxY
   if (pos.value.x < minX) pos.value.x = minX
   if (pos.value.y < minY) pos.value.y = minY
     
       // 调整面板大小以适应容器尺寸
   const maxW = Math.min(400, b.width * 0.9)
   const maxH = Math.min(b.height * 0.8, b.height - 100)
-  if (panelSize.value.w > maxW) panelSize.value.w = maxW
-  if (panelSize.value.h > maxH) panelSize.value.h = maxH
+    if (panelSize.value.w > maxW) panelSize.value.w = maxW
+    if (panelSize.value.h > maxH) panelSize.value.h = maxH
     
     // 重新计算面板位置，但不改变FAB按钮位置
     placePanel()
