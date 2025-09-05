@@ -311,14 +311,14 @@ async function init() {
     const wWorld = width * pxToWorld
     const hWorld = height * pxToWorld
     const geo = new THREE.PlaneGeometry(wWorld, hWorld)
-    const mat = new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false, depthTest: false, side: THREE.DoubleSide })
+    const mat = new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false, depthTest: true, side: THREE.DoubleSide })
     const m = new THREE.Mesh(geo, mat)
     const theta = (i / count) * Math.PI * 2
     const x = Math.cos(theta) * radius
     const z = Math.sin(theta) * radius
     m.position.set(x, 0.8, z) // 图片下方
     m.lookAt(0, 0.8, 0)
-    m.renderOrder = 999
+    
     group.add(m)
     return m
   })
@@ -342,13 +342,27 @@ async function init() {
   setupUserChangeListener() // 初始化时设置用户切换监听器
 }
 
-function onDblClickOpen(){
-  const m = meshes[activeIndex]
-  if (!m) return
-  const camForward = new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion)
-  const front = camForward.dot(new THREE.Vector3().subVectors(m.position, camera.position).normalize()) > 0
-  if (!front) return
-  const url = links[activeIndex]
+function onDblClickOpen(e){
+  // 基于鼠标位置进行射线拾取，打开被点中的那张
+  const rect = canvasRef.value.getBoundingClientRect()
+  const nx = ((e.clientX - rect.left) / rect.width) * 2 - 1
+  const ny = -((e.clientY - rect.top) / rect.height) * 2 + 1
+  pointer.x = nx
+  pointer.y = ny
+  raycaster.setFromCamera(pointer, camera)
+  const intersects = raycaster.intersectObjects(meshes, false)
+  if (intersects.length){
+    const obj = intersects[0].object
+    const i = meshes.indexOf(obj)
+    if (i >= 0){
+      const url = links[i]
+      if (url) router.push(url)
+      return
+    }
+  }
+  // 未命中则退回到 hoveredIndex 或当前正面 activeIndex
+  const idx = (hoveredIndex >= 0 ? hoveredIndex : activeIndex)
+  const url = links[idx]
   if (url) router.push(url)
 }
 
@@ -500,7 +514,7 @@ function updateHover(){
 </script>
 
 <style scoped>
-.three-wrap { position: relative; width: 100%; height: 91vh; transition: background-color .35s ease; display: flex; align-items: flex-start; justify-content: center; }
+.three-wrap { position: relative; width: 100%; height: calc(100vh - 75px); transition: background-color .35s ease; display: flex; align-items: flex-start; justify-content: center; }
 .three-canvas { width: 100%; height: 90%; display: block; }
 .hint { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); font-size: 12px; color: rgba(255,255,255,.9); background: rgba(0,0,0,.25); padding: 6px 10px; border-radius: 999px; }
 </style>

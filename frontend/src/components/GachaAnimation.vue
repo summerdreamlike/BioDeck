@@ -105,7 +105,7 @@ function resolveImageUrl(url) {
     }
     
     // 使用require动态导入图片
-    const cleanPath = url.replace(/^assets\//, '')
+    const cleanPath = url.replace(/^\/assets\//, '')
     return require(`@/assets/${cleanPath}`)
   } catch (error) {
     console.warn('图片加载失败:', url, error)

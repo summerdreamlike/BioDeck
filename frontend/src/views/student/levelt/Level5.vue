@@ -1,666 +1,211 @@
 <template>
-  <div class="level-page">
-    <!-- 背景图片 -->
+  <div class="level5-wrap">
+    <button class="library-fixed" @click="goLibrary" aria-label="生物图书馆">
+      <img :src="srcLibrary" class="library-icon" alt="library" />
+      <span class="library-text">生物图书馆</span>
+    </button>
+    <div class="map" ref="mapRef" :style="{ width: mapWidth + 'px', height: mapHeight + 'px' }">
     <div class="background-image"></div>
-    
-    <!-- 暂时隐藏其他元素 -->
-    <!--
-    <div class="top-nav">
-      <div class="nav-left">
-        <h1 class="chapter-title">光合作用</h1>
-        <span class="chapter-subtitle">Photosynthesis</span>
-      </div>
-      <div class="nav-right">
-        <button class="library-btn" @click="showLibrary = true">
-          <i class="library-icon">📚</i>
-          <span>生物图书馆</span>
-        </button>
-      </div>
-    </div>
-
-    <div class="levels-container">
-      <div class="levels-grid">
-        <div class="level-card" v-for="level in levels" :key="level.id" @click="selectLevel(level)">
-          <div class="level-number">{{ level.number }}</div>
-          <div class="level-content">
-            <h3 class="level-title">{{ level.title }}</h3>
-            <p class="level-desc">{{ level.description }}</p>
-            <div class="level-progress">
-              <div class="progress-bar">
-                <div class="progress-fill" :style="{ width: level.progress + '%' }"></div>
-              </div>
-              <span class="progress-text">{{ level.progress }}%</span>
-            </div>
-          </div>
-          <div class="level-status" :class="level.status">
-            <span v-if="level.status === 'completed'">✓</span>
-            <span v-else-if="level.status === 'locked'">🔒</span>
-            <span v-else>▶</span>
-          </div>
-        </div>
+      <svg class="links" :viewBox="svgViewBox" preserveAspectRatio="none">
+        <template v-for="(seg, i) in segments" :key="i">
+          <path :d="seg.d" class="seg" />
+        </template>
+      </svg>
+      <div v-for="n in 20" :key="n" class="node"
+           :class="nodeClass(n)"
+           :style="nodeStyle(n)"
+           @click="onNodeClick(n)"
+           @mouseenter="hover=n" @mouseleave="hover=0">
+        <img :src="imgFor(n)" class="btn-img" :alt="`关卡5-${n}`" />
+        <div class="label"><strong>5-{{ n }}</strong></div>
+        <span v-if="n===20" class="tag">BOSS</span>
       </div>
     </div>
 
-    <div class="library-modal" v-if="showLibrary" @click="showLibrary = false">
-      <div class="library-content" @click.stop>
-        <div class="library-header">
-          <h2>📚 生物图书馆</h2>
-          <button class="close-btn" @click="showLibrary = false">×</button>
-        </div>
-        <div class="library-body">
-          <div class="ppt-list">
-            <div class="ppt-item" v-for="ppt in pptResources" :key="ppt.id" @click="openDocument(ppt)">
-              <div class="ppt-icon">📊</div>
-              <div class="ppt-info">
-                <h3 class="ppt-name">{{ ppt.name }}</h3>
-                <p class="ppt-desc">{{ ppt.description }}</p>
-                <span class="ppt-size">{{ ppt.size }}</span>
-              </div>
-              <div class="ppt-action">
-                <button class="view-btn">查看</button>
-              </div>
-            </div>
-          </div>
-        </div>
+    <!-- 完成提示弹窗 -->
+    <div v-if="showModal" class="modal" @click="showModal=false">
+      <div class="modal-card" @click.stop>
+        <div class="modal-title">已完成</div>
+        <div class="modal-body">{{ modalText }}</div>
+        <button class="modal-ok" @click="showModal=false">好的</button>
       </div>
     </div>
-
-    <DocumentViewer
-      v-if="showDocumentViewer"
-      :document="currentDocument"
-      @close="showDocumentViewer = false"
-    />
-    -->
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import DocumentViewer from '@/components/DocumentViewer.vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { useRouter } from 'vue-router'
 
-const showLibrary = ref(false)
-const showPPTViewer = ref(false)
-const currentPPT = ref(null)
+const router = useRouter()
+const mapRef = ref(null)
+const hover = ref(0)
 
-// 关卡数据
-const levels = ref([
-  {
-    id: 1,
-    number: '关卡1',
-    title: '光合作用概述',
-    description: '了解光合作用的基本概念和重要性',
-    progress: 100,
-    status: 'completed'
-  },
-  {
-    id: 2,
-    number: '关卡2',
-    title: '光合色素',
-    description: '叶绿素等光合色素的种类和作用',
-    progress: 75,
-    status: 'in-progress'
-  },
-  {
-    id: 3,
-    number: '关卡3',
-    title: '光反应阶段',
-    description: '光能转化为化学能的过程',
-    progress: 50,
-    status: 'in-progress'
-  },
-  {
-    id: 4,
-    number: '关卡4',
-    title: '暗反应阶段',
-    description: 'CO2固定和糖类合成过程',
-    progress: 0,
-    status: 'locked'
-  },
-  {
-    id: 5,
-    number: '关卡5',
-    title: '光合作用效率',
-    description: '影响光合作用效率的因素',
-    progress: 0,
-    status: 'locked'
-  },
-  {
-    id: 6,
-    number: '关卡6',
-    title: '实践应用',
-    description: '光合作用在农业和环保中的应用',
-    progress: 0,
-    status: 'locked'
+// 视口高度和地图高度（减去顶部 75px）
+const viewportH = ref(window.innerHeight)
+const mapHeight = computed(() => Math.max(300, viewportH.value - 75))
+
+function onResize(){ viewportH.value = window.innerHeight }
+
+// 起伏参数
+const amplitude = computed(() => Math.round(mapHeight.value * 0.08))
+const cycles = 2.6
+const omega = (2 * Math.PI * cycles) / 19
+const phase = -Math.PI / 2
+
+// 节点间距与基线
+const stepX = 360
+const nodeSize = 120
+const baseY = computed(() => Math.round(mapHeight.value * 0.458))
+
+// 交替上下排列
+function posOf(n){
+  const i = n - 1
+  const x = i * stepX + 120
+  const offset = (i % 2 === 0) ? -amplitude.value : amplitude.value
+  const y = baseY.value + offset
+  return { x, y }
+}
+
+function catmullRomToBezier(p0, p1, p2, p3, t = 0.25){
+  const c1x = p1.x + (p2.x - p0.x) * t
+  const c1y = p1.y + (p2.y - p0.y) * t
+  const c2x = p2.x - (p3.x - p1.x) * t
+  const c2y = p2.y - (p3.y - p1.y) * t
+  return { c1x, c1y, c2x, c2y }
+}
+
+const segments = computed(()=>{
+  const arr = []
+  for (let i=1;i<20;i++){
+    const p0 = i-1 >= 1 ? posOf(i-1) : posOf(i)
+    const p1 = posOf(i)
+    const p2 = posOf(i+1)
+    const p3 = i+2 <= 20 ? posOf(i+2) : posOf(i+1)
+    const { c1x, c1y, c2x, c2y } = catmullRomToBezier(p0, p1, p2, p3, 0.25)
+    const d = `M ${p1.x} ${p1.y} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${p2.x} ${p2.y}`
+    arr.push({ d })
   }
-])
+  return arr
+})
 
-// 课件资源
-const pptResources = ref([
-  {
-    id: 1,
-    name: '光合作用基础理论.ppt',
-    description: '光合作用的基本原理和过程详解',
-    size: '2.3MB',
-    url: '/src/assets/课件/光合作用/光合作用基础理论.ppt',
-    status: 'available'
-  },
-  {
-    id: 2,
-    name: '光合色素研究.ppt',
-    description: '叶绿素等光合色素的结构和功能',
-    size: '1.8MB',
-    url: '/src/assets/课件/光合作用/光合色素研究.ppt',
-    status: 'available'
-  },
-  {
-    id: 3,
-    name: '光反应机制.ppt',
-    description: '光反应阶段的详细机制分析',
-    size: '3.1MB',
-    url: '/src/assets/课件/光合作用/光反应机制.ppt',
-    status: 'available'
-  },
-  {
-    id: 4,
-    name: '暗反应过程.ppt',
-    description: '卡尔文循环和糖类合成过程',
-    size: '2.7MB',
-    url: '/src/assets/课件/光合作用/暗反应过程.ppt',
-    status: 'available'
-  },
-  {
-    id: 5,
-    name: '光合作用实验指导.ppt',
-    description: '相关实验的操作步骤和注意事项',
-    size: '1.5MB',
-    url: '/src/assets/课件/光合作用/光合作用实验指导.ppt',
-    status: 'available'
+const mapWidth = computed(()=>{ const last = posOf(20); return last.x + 220 })
+const svgViewBox = computed(()=>`0 0 ${mapWidth.value} ${mapHeight.value}`)
+
+const completed = new Set(Array.from({length:18}, (_,i)=>i+1))
+
+function nodeClass(n){
+  return { done: completed.has(n), boss: n===20, hover: hover.value===n }
+}
+
+function nodeStyle(n){
+  const p = posOf(n)
+  return {
+    left: (p.x - 42) + 'px',
+    top: (p.y - 45) + 'px'
   }
-])
+}
 
-// 文档查看器相关
-const showDocumentViewer = ref(false)
-const currentDocument = ref(null)
+// 按钮图案（运行时动态载入，避免模块缺失崩溃）
+const placeholder = new URL('@/assets/img/Logo.png', import.meta.url).href
+const srcBtn2 = ref(placeholder)
+const srcBtn1 = ref(placeholder)
+const srcBoss = ref(placeholder)
+const srcLibrary = ref(placeholder)
 
-// 选择关卡
-function selectLevel(level) {
-  if (level.status === 'locked') {
-    alert('该关卡尚未解锁，请先完成前置关卡')
+onMounted(async () => {
+  try { const m = await import('@/assets/img/levelt/button-2.png'); srcBtn2.value = (m && (m.default || m)) } catch (e) { console.warn('button-2.png not found, using placeholder') }
+  try { const m = await import('@/assets/img/levelt/button-1.png'); srcBtn1.value = (m && (m.default || m)) } catch (e) { console.warn('button-1.png not found, using placeholder') }
+  try { const m = await import('@/assets/img/levelt/button-boss.png'); srcBoss.value = (m && (m.default || m)) } catch (e) { console.warn('button-boss.png not found, using placeholder') }
+  try { const m = await import('@/assets/img/levelt/library.png'); srcLibrary.value = (m && (m.default || m)) } catch (e) {
+    // 内置透明SVG书本占位
+    srcLibrary.value = 'data:image/svg+xml;utf8,%3Csvg xmlns%3D%22http%3A//www.w3.org/2000/svg%22 width%3D%2272%22 height%3D%2272%22 viewBox%3D%220 0 72 72%22%3E%3Cg fill%3D%22none%22 stroke%3D%22%232783f6%22 stroke-width%3D%224%22%3E%3Crect x%3D%2212%22 y%3D%2214%22 rx%3D%228%22 ry%3D%228%22 width%3D%2222%22 height%3D%2244%22/%3E%3Crect x%3D%2238%22 y%3D%2214%22 rx%3D%228%22 ry%3D%228%22 width%3D%2222%22 height%3D%2244%22/%3E%3Cpath d%3D%22M12 22h22M38 22h22%22/%3E%3C/g%3E%3C/svg%3E'
+  }
+})
+
+function imgFor(n){
+  if (n <= 18) return srcBtn2.value
+  if (n === 19) return srcBtn1.value
+  return srcBoss.value
+}
+
+// 完成弹窗
+const showModal = ref(false)
+const modalText = ref('')
+
+function onNodeClick(n){
+  if (n<=18){
+    modalText.value = `关卡5-${n} 已完成，请继续下一关！`
+    showModal.value = true
     return
   }
-  console.log('选择关卡:', level.number, level.title)
-  // 这里可以添加跳转到具体关卡页面的逻辑
+  if (n===19){ router.push('/StudentSide/levelt/level5-19'); return }
+  if (n===20){ router.push('/StudentSide/levelt/level5-20') }
 }
 
-// 打开文档
-function openDocument(doc) {
-  currentDocument.value = doc
-  showDocumentViewer.value = true
-}
+function goLibrary(){ router.push('/StudentSide/levelt/library') }
+
+let wheelHandler
+let wrapper
+onMounted(()=>{
+  window.addEventListener('resize', onResize)
+  wrapper = document.querySelector('.level5-wrap')
+  if (wrapper){
+    wrapper.classList.add('h-scroll-container')
+    wheelHandler = (e)=>{
+      if (e.ctrlKey) return
+      if (Math.abs(e.deltaY) >= Math.abs(e.deltaX)){
+        wrapper.scrollLeft += e.deltaY
+        e.preventDefault()
+      }
+    }
+    wrapper.addEventListener('wheel', wheelHandler, { passive:false })
+  }
+})
+
+onBeforeUnmount(()=>{
+  window.removeEventListener('resize', onResize)
+  if (wrapper){
+    wrapper.removeEventListener('wheel', wheelHandler)
+    wrapper.classList.remove('h-scroll-container')
+  }
+})
 </script>
 
 <style scoped>
-.level-page {
-  min-height: 81vh;
-  width: 12000px;
-  position: relative;
-  overflow-x: auto;
-  overflow-y: hidden;
-}
+.level5-wrap { position: relative; height: calc(100vh - 75px); overflow-y: hidden; overflow-x: auto; }
+.background-image { position: absolute; left: 0; bottom: 0; width: 100%; height: 100%; background-image: url('@/assets/img/levelt/levelt5-background.jpg'); background-size: auto 100%; background-repeat: repeat-x; background-position: 0 0; z-index: 0; }
 
-/* 背景图片 */
-.background-image {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  width: 12000px;
-  height: 100vh;
-  background-image: url('@/assets/img/levelt/levelt5-background.jpg');
-  background-size: auto 100vh;
-  background-repeat: repeat-x;
-  background-position: 0 0;
-  z-index: -1;
-}
+.library-fixed { position: fixed; left: 22px; top: 46px; z-index: 6; padding: 0; border: none; background: transparent; cursor: pointer; }
+.library-icon { width: 72px; height: 72px; object-fit: contain; display: block; filter: drop-shadow(0 8px 18px rgba(0,0,0,.22)); transition: transform .18s ease, filter .18s ease; }
+.library-fixed:hover .library-icon { transform: translateY(-2px) scale(1.06); filter: drop-shadow(0 12px 26px rgba(0,0,0,.28)); }
+.library-text{font-size: 14px; color: #1d1d1dad; font-weight: 600;}
 
-/* 暂时隐藏其他样式 */
-/*
-.top-nav {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 30px;
-  padding: 20px;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 20px;
-  backdrop-filter: blur(20px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-}
+.map { position: relative; min-width: 1200px; z-index: 1; }
+.links { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+.seg { fill: none; stroke: rgba(59,130,246,.6); stroke-width: 3; stroke-dasharray: 7 8; filter: drop-shadow(0 1px 0 rgba(0,0,0,.08)); }
 
-.nav-left {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
+.node { position: absolute; display: flex; flex-direction: column; align-items: center; z-index: 2; cursor: pointer; }
+.btn-img { width: 122px; height: auto; display: block; filter: drop-shadow(0 6px 14px rgba(0,0,0,.18)); transition: transform .18s ease, filter .18s ease; }
+.node.hover .btn-img { transform: translateY(-4px) scale(1.03); filter: drop-shadow(0 10px 22px rgba(0,0,0,.22)); }
+.label { margin-top: 6px; color: #0f172a; font-weight: 800; font-size: 14px; letter-spacing: .3px; text-shadow: 0 1px 0 rgba(255,255,255,.6); }
 
-.chapter-title {
-  margin: 0;
-  font-size: 28px;
-  font-weight: 700;
-  color: #1e293b;
-}
+.node.boss .btn-img { width: 230px; }
+.node.boss.hover .btn-img { transform: translateY(-8px) scale(1.4); filter: drop-shadow(0 14px 28px rgba(220,38,38,.5)); }
+.node.boss .label { font-size: 20px; margin-top: 8px; }
+.node.boss .tag { font-size: 14px; padding: 4px 12px; bottom: -34px; background: #f59e0b; color: #fff;border-radius: 999px;padding: 2px 8px;margin-top: 5px;}
 
-.chapter-subtitle {
-  font-size: 14px;
-  color: #64748b;
-  font-style: italic;
-}
+/* 弹窗 */
+.modal { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: grid; place-items: center; z-index: 50; }
+.modal-card { width: min(380px, 86vw); background: #fff; border-radius: 14px; padding: 18px 18px 14px; box-shadow: 0 18px 44px rgba(0,0,0,.22); animation: pop .18s ease-out; }
+.modal-title { font-weight: 900; font-size: 18px; color: #065f46; margin-bottom: 6px; }
+.modal-body { color: #0f172a; line-height: 1.6; margin-bottom: 12px; }
+.modal-ok { width: 100%; height: 36px; border: none; border-radius: 10px; background: linear-gradient(135deg,#10b981,#34d399); color: #fff; font-weight: 800; cursor: pointer; box-shadow: 0 10px 22px rgba(16,185,129,.28); }
+@keyframes pop { from { transform: translateY(6px) scale(.98); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
 
-.library-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 20px;
-  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-  color: white;
-  border: none;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  font-weight: 600;
-  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
-}
-
-.library-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
-}
-
-.library-icon {
-  font-size: 20px;
-}
-
-.levels-container {
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 20px;
-  padding: 30px;
-  backdrop-filter: blur(20px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-}
-
-.levels-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 20px;
-}
-
-.level-card {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  padding: 24px;
-  background: rgba(248, 250, 252, 0.8);
-  border: 2px solid rgba(226, 232, 240, 0.8);
-  border-radius: 16px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.level-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-  transition: left 0.5s;
-}
-
-.level-card:hover::before {
-  left: 100%;
-}
-
-.level-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
-  border-color: rgba(59, 130, 246, 0.4);
-}
-
-.level-number {
-  width: 60px;
-  height: 60px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-  color: white;
-  border-radius: 50%;
-  font-size: 18px;
-  font-weight: 700;
-  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
-  flex-shrink: 0;
-}
-
-.level-content {
-  flex: 1;
-  min-width: 0;
-}
-
-.level-title {
-  margin: 0 0 8px;
-  font-size: 18px;
-  font-weight: 600;
-  color: #1e293b;
-}
-
-.level-desc {
-  margin: 0 0 16px;
-  font-size: 14px;
-  color: #64748b;
-  line-height: 1.5;
-}
-
-.level-progress {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.progress-bar {
-  flex: 1;
-  height: 8px;
-  background: rgba(15, 23, 42, 0.1);
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #10b981, #3b82f6);
-  border-radius: 4px;
-  transition: width 0.6s ease;
-}
-
-.progress-text {
-  font-size: 12px;
-  color: #64748b;
-  font-weight: 500;
-  min-width: 40px;
-}
-
-.level-status {
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  font-size: 18px;
-  font-weight: bold;
-  flex-shrink: 0;
-}
-
-.level-status.completed {
-  background: linear-gradient(135deg, #10b981, #059669);
-  color: white;
-  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
-}
-
-.level-status.in-progress {
-  background: linear-gradient(135deg, #f59e0b, #d97706);
-  color: white;
-  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
-}
-
-.level-status.locked {
-  background: rgba(100, 116, 139, 0.2);
-  color: #64748b;
-}
-
-.library-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  backdrop-filter: blur(8px);
-}
-
-.library-content {
-  background: white;
-  border-radius: 20px;
-  width: 95%;
-  height: 95%;
-  max-width: none;
-  max-height: none;
-  overflow: hidden;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  animation: modalSlideIn 0.3s ease-out;
-  display: flex;
-  flex-direction: column;
-}
-
-@keyframes modalSlideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-20px) scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.library-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 30px;
-  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-  color: white;
-  flex-shrink: 0;
-}
-
-.library-header h2 {
-  margin: 0;
-  font-size: 28px;
-  font-weight: 700;
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  color: white;
-  font-size: 32px;
-  cursor: pointer;
-  padding: 8px;
-  border-radius: 50%;
-  transition: background 0.2s ease;
-  width: 50px;
-  height: 50px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.close-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.library-body {
-  padding: 30px;
-  flex: 1;
-  overflow-y: auto;
-  background: #f8fafc;
-}
-
-.ppt-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-  gap: 24px;
-  max-width: 1400px;
-  margin: 0 auto;
-}
-
-.ppt-item {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  padding: 24px;
-  background: rgba(255, 255, 255, 0.95);
-  border: 1px solid rgba(226, 232, 240, 0.8);
-  border-radius: 16px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
-}
-
-.ppt-item:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
-  border-color: rgba(59, 130, 246, 0.3);
-}
-
-.ppt-icon {
-  font-size: 32px;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
-}
-
-.ppt-info {
-  flex: 1;
-}
-
-.ppt-name {
-  margin: 0 0 8px;
-  font-size: 18px;
-  font-weight: 600;
-  color: #1e293b;
-}
-
-.ppt-desc {
-  margin: 0 0 8px;
-  font-size: 14px;
-  color: #64748b;
-  line-height: 1.5;
-}
-
-.ppt-size {
-  font-size: 12px;
-  color: #94a3b8;
-  font-weight: 500;
-}
-
-.ppt-action {
-  display: flex;
-  align-items: center;
-}
-
-.view-btn {
-  padding: 12px 20px;
-  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-  color: white;
-  border: none;
-  border-radius: 12px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 600;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
-}
-
-.view-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
-}
-
-.ppt-viewer-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1001;
-  backdrop-filter: blur(8px);
-}
-
-.ppt-viewer-content {
-  background: white;
-  border-radius: 20px;
-  width: 95%;
-  max-width: 1200px;
-  max-height: 90vh;
-  overflow: hidden;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-  animation: modalSlideIn 0.3s ease-out;
-}
-
-.ppt-viewer-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px 24px;
-  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-  color: white;
-}
-
-.ppt-viewer-header h3 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-}
-
-.ppt-viewer-body {
-  padding: 24px;
-  background: #f8fafc;
-}
-
-@media (max-width: 768px) {
-  .levels-grid {
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
-  
-  .top-nav {
-    flex-direction: column;
-    gap: 16px;
-    text-align: center;
-  }
-  
-  .library-content,
-  .ppt-viewer-content {
-    width: 95%;
-    margin: 20px;
-  }
-  
-  .level-card {
-    flex-direction: column;
-    text-align: center;
-    gap: 16px;
-  }
-  
-  .level-number {
-    width: 50px;
-    height: 50px;
-    font-size: 16px;
-  }
-  
-  .ppt-list {
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
-}
-*/
+/* 隐藏滚动条（仅在本页生效） */
+:global(.h-scroll-container){ -ms-overflow-style: none; scrollbar-width: none; }
+:global(.h-scroll-container::-webkit-scrollbar){ width: 0; height: 0; }
 </style>
 
 

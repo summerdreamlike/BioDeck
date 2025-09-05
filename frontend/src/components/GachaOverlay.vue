@@ -83,7 +83,7 @@ function resolveImageUrl(url) {
     
     // 使用require动态导入图片
     // 移除开头的assets/，因为require会从src/assets开始查找
-    const cleanPath = url.replace(/^assets\//, '')
+    const cleanPath = url.replace(/^\/assets\//, '')
     return require(`@/assets/${cleanPath}`)
   } catch (error) {
     console.warn('图片加载失败:', url, error)

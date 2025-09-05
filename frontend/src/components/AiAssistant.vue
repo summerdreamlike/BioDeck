@@ -1,5 +1,10 @@
 <template>
-  <div class="ai-assistant" :style="{ left: pos.x + 'px', top: pos.y + 'px' }">
+  <teleport to="body">
+    <div 
+      v-if="isInStudentSide" 
+      class="ai-assistant" 
+      :style="{ left: pos.x + 'px', top: pos.y + 'px' }"
+    >
     <button
       class="fab"
       @click.prevent="onFabClick"
@@ -94,17 +99,26 @@
         <div class="resizer" :class="handleCorner" @mousedown.prevent="onResizeDown" @touchstart.prevent="onResizeDown" />
       </div>
     </transition>
-  </div>
+    </div>
+  </teleport>
 </template>
 
 <script setup>
 /* global defineProps */
-import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, onMounted, onBeforeUnmount, nextTick, computed, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import botPng from '@/assets/img/aibot.png'
 
 const props = defineProps({
   baseURL: { type: String, default: '/api/v1/ai' },
   sessionId: { type: String, default: () => `web-${Math.random().toString(36).slice(2)}` }
+})
+
+const route = useRoute()
+
+// 检查是否在 StudentSide 路由下
+const isInStudentSide = computed(() => {
+  return route.path.startsWith('/StudentSide')
 })
 
 const open = ref(false)
@@ -133,6 +147,15 @@ let startW = 0
 let startH = 0
 const handleCorner = ref('br') // tl | tr | bl | br
 const typingTimer = ref(null)
+
+// 获取 StudentSide 的容器（优先 main-content，其次 layout-container）
+function getStudentSideBounds(){
+  const main = document.querySelector('.main-content')
+  const layout = document.querySelector('.layout-container')
+  const el = main || layout || document.body
+  const rect = el.getBoundingClientRect()
+  return { el, left: rect.left, top: rect.top, width: rect.width, height: rect.height }
+}
 
 function toggle(){
   open.value = !open.value
@@ -164,13 +187,18 @@ function onMove(e){
   const dx = ev.clientX - startMouseX
   const dy = ev.clientY - startMouseY
   if (Math.abs(dx) + Math.abs(dy) > 4) moved = true
-  const vw = window.innerWidth
-  const vh = window.innerHeight
+  // 使用 StudentSide 容器作为拖动边界（带容器偏移）
+  const b = getStudentSideBounds()
   const size = 60 // 近似 FAB 尺寸
-  const nx = Math.min(Math.max(8, startX + dx), vw - size - 8)
-  const ny = Math.min(Math.max(8, startY + dy), vh - size - 8)
+  const margin = 6
+  const minX = b.left + margin
+  const maxX = b.left + b.width - size - margin
+  const minY = b.top + margin
+  const maxY = b.top + b.height - size - margin
+  const nx = Math.min(Math.max(minX, startX + dx), maxX)
+  const ny = Math.min(Math.max(minY, startY + dy), maxY)
   pos.value = { x: nx, y: ny }
-  localStorage.setItem('aiAssistantPos', JSON.stringify(pos.value))
+  localStorage.setItem('aiAssistantPos_StudentSide', JSON.stringify(pos.value))
   if (open.value) placePanel()
 }
 
@@ -200,11 +228,10 @@ function onResizing(e){
   const ev = e.touches ? e.touches[0] : e
   const dx = ev.clientX - startRX
   const dy = ev.clientY - startRY
-  const vw = window.innerWidth
-  const vh = window.innerHeight
+  const b = getStudentSideBounds()
   const minW = 280, minH = 280
-  const maxW = Math.min(1700, vw - 16)
-  const maxH = Math.min(Math.round(vh * 1.0), vh - 16)
+  const maxW = Math.min(1700, b.width - 16)
+  const maxH = Math.min(Math.round(b.height * 1.0), b.height - 16)
   // 根据当前手柄方向决定宽高变化方向
   let dw = dx
   let dh = dy
@@ -213,7 +240,7 @@ function onResizing(e){
   const nw = Math.max(minW, Math.min(maxW, startW + dw))
   const nh = Math.max(minH, Math.min(maxH, startH + dh))
   panelSize.value = { w: nw, h: nh }
-  localStorage.setItem('aiAssistantSize', JSON.stringify(panelSize.value))
+  localStorage.setItem('aiAssistantSize_StudentSide', JSON.stringify(panelSize.value))
   placePanel()
 }
 
@@ -240,7 +267,7 @@ function formatAnswer(raw){
   text = text.replace(/^\s*[*\-+]\s+/gm, '')
              .replace(/[*]{2,}/g, '')
 
-  // 处理 ### 标题：本行中“### ”后的文字为标题
+  // 处理 ### 标题：本行中"### "后的文字为标题
   text = text.replace(/^\s*#{3}\s*(.+)$/gm, (m, p1) => `<div class="h3-title">${escapeHtml(String(p1).trim())}</div>`)
 
   // 将所有 # 转为空格（避免残留的 markdown 井号）
@@ -428,8 +455,6 @@ async function uploadImage(imageFile, questionText) {
   }
 }
 
-
-
 async function send(){
   if ((!input.value && !uploadedImage.value) || loading.value) return
   
@@ -474,108 +499,148 @@ async function sendText(question) {
   }
 }
 
+// 监听路由变化
+watch(() => route.path, async (newPath) => {
+  if (newPath.startsWith('/StudentSide')) {
+    // 进入或在 StudentSide 内部切换子页面：恢复或初始化位置，并重新计算面板位置信息
+    const b = getStudentSideBounds()
+    const btnSize = 60
+    const margin = 6
+    const minX = b.left + margin
+    const maxX = b.left + b.width - btnSize - margin
+    const minY = b.top + margin
+    const maxY = b.top + b.height - btnSize - margin
+
+    const saved = localStorage.getItem('aiAssistantPos_StudentSide')
+    if (saved) {
+      try {
+        const p = JSON.parse(saved)
+        pos.value = {
+          x: Math.min(Math.max(minX, p.x || 0), maxX),
+          y: Math.min(Math.max(minY, p.y || 0), maxY)
+        }
+      } catch {
+        pos.value = { x: maxX, y: maxY }
+      }
+    } else {
+      pos.value = { x: maxX, y: maxY }
+    }
+    await nextTick(); placePanel()
+  } else {
+    // 离开 StudentSide，隐藏组件
+    pos.value = { x: -100, y: -100 }
+    open.value = false // 关闭面板
+  }
+})
+
 onMounted(() => {
-  // 读取上次位置，默认右下角，并适配不同屏幕尺寸
+  // 只有在 StudentSide 中才初始化位置
+  if (!isInStudentSide.value) {
+    pos.value = { x: -100, y: -100 } // 隐藏位置
+    return
+  }
+  
+  // 读取上次位置，默认右下角
   try {
-    const saved = localStorage.getItem('aiAssistantPos')
+    const saved = localStorage.getItem('aiAssistantPos_StudentSide')
     if (saved) {
       const p = JSON.parse(saved)
-      // 验证保存的位置是否在当前屏幕范围内
-      const vw = window.innerWidth
-      const vh = window.innerHeight
+      const b = getStudentSideBounds()
       const btnSize = 60
-      const margin = 20
-      const maxX = vw - btnSize - margin
-      const maxY = vh - btnSize - margin
+      const margin = 6
+      const minX = b.left + margin
+      const maxX = b.left + b.width - btnSize - margin
+      const minY = b.top + margin
+      const maxY = b.top + b.height - btnSize - margin
       pos.value = { 
-        x: Math.min(Math.max(margin, p.x || 0), maxX), 
-        y: Math.min(Math.max(margin, p.y || 0), maxY) 
+        x: Math.min(Math.max(minX, p.x || 0), maxX), 
+        y: Math.min(Math.max(minY, p.y || 0), maxY) 
       }
     } else {
-      // 默认右下角位置，适配不同屏幕
-      const vw = window.innerWidth
-      const vh = window.innerHeight
+      // 默认右下角位置（容器内）
+      const b = getStudentSideBounds()
       const btnSize = 60
-      const margin = 20
+      const margin = 6
       pos.value = { 
-        x: vw - btnSize - margin, 
-        y: vh - btnSize - margin 
+        x: b.left + b.width - btnSize - margin, 
+        y: b.top + b.height - btnSize - margin 
       }
     }
   } catch {
-    // 异常情况下的默认位置
-    const vw = window.innerWidth
-    const vh = window.innerHeight
-    const btnSize = 60
-    const margin = 20
-    pos.value = { 
-      x: vw - btnSize - margin, 
-      y: vh - btnSize - margin 
-    }
+      // 异常情况下的默认位置（容器右下）
+  const b = getStudentSideBounds()
+  const btnSize = 60
+  const margin = 6
+  pos.value = { 
+    x: b.left + b.width - btnSize - margin, 
+    y: b.top + b.height - btnSize - margin 
+  }
   }
   try {
-    const ss = localStorage.getItem('aiAssistantSize')
+    const ss = localStorage.getItem('aiAssistantSize_StudentSide')
     if (ss) {
       const s = JSON.parse(ss)
-      // 适配不同屏幕尺寸的面板大小
-      const vw = window.innerWidth
-      const vh = window.innerHeight
-      const maxW = Math.min(400, vw * 0.9)
-      const maxH = Math.min(vh * 0.8, vh - 100)
+      // 适配容器尺寸的面板大小
+      const b = getStudentSideBounds()
+      const maxW = Math.min(400, b.width * 0.9)
+      const maxH = Math.min(b.height * 0.8, b.height - 100)
       panelSize.value = { 
         w: Math.min(s.w || 360, maxW), 
-        h: Math.min(s.h || Math.round(vh * 0.62), maxH) 
+        h: Math.min(s.h || Math.round(b.height * 0.62), maxH) 
       }
     } else {
-      // 默认面板大小，适配不同屏幕
-      const vw = window.innerWidth
-      const vh = window.innerHeight
-      const maxW = Math.min(400, vw * 0.9)
-      const maxH = Math.min(vh * 0.8, vh - 100)
+      // 默认面板大小，适配容器尺寸
+      const b = getStudentSideBounds()
+      const maxW = Math.min(400, b.width * 0.9)
+      const maxH = Math.min(b.height * 0.8, b.height - 100)
       panelSize.value = { 
         w: Math.min(360, maxW), 
-        h: Math.min(Math.round(vh * 0.62), maxH) 
+        h: Math.min(Math.round(b.height * 0.62), maxH) 
       }
     }
   } catch {
-    // 异常情况下的默认面板大小
-    const vw = window.innerWidth
-    const vh = window.innerHeight
-    const maxW = Math.min(400, vw * 0.9)
-    const maxH = Math.min(vh * 0.8, vh - 100)
-    panelSize.value = { 
-      w: Math.min(360, maxW), 
-      h: Math.min(Math.round(vh * 0.62), maxH) 
-    }
+      // 异常情况下的默认面板大小（容器）
+  const b = getStudentSideBounds()
+  const maxW = Math.min(400, b.width * 0.9)
+  const maxH = Math.min(b.height * 0.8, b.height - 100)
+  panelSize.value = { 
+    w: Math.min(360, maxW), 
+    h: Math.min(Math.round(b.height * 0.62), maxH) 
+  }
   }
   scrollToBottom()
   window.addEventListener('resize', placePanel)
   // 监听窗口大小变化，重新计算位置和大小
   window.addEventListener('resize', () => {
-    const vw = window.innerWidth
-    const vh = window.innerHeight
-    const btnSize = 60
-    const margin = 20
-    const maxX = vw - btnSize - margin
-    const maxY = vh - btnSize - margin
+      // 只有在 StudentSide 中才处理位置调整
+  if (!isInStudentSide.value) return
+  
+  // 使用 StudentSide 容器作为边界
+  const b = getStudentSideBounds()
+  const btnSize = 60
+  const margin = 6
+  const minX = b.left + margin
+  const maxX = b.left + b.width - btnSize - margin
+  const minY = b.top + margin
+  const maxY = b.top + b.height - btnSize - margin
+  
+  // 只在超出边界时才调整，保持用户设置的位置
+  if (pos.value.x > maxX) pos.value.x = maxX
+  if (pos.value.y > maxY) pos.value.y = maxY
+  if (pos.value.x < minX) pos.value.x = minX
+  if (pos.value.y < minY) pos.value.y = minY
     
-    // 只在超出边界时才调整，保持用户设置的位置
-    if (pos.value.x > maxX) pos.value.x = maxX
-    if (pos.value.y > maxY) pos.value.y = maxY
-    if (pos.value.x < margin) pos.value.x = margin
-    if (pos.value.y < margin) pos.value.y = margin
-    
-    // 调整面板大小以适应新屏幕
-    const maxW = Math.min(400, vw * 0.9)
-    const maxH = Math.min(vh * 0.8, vh - 100)
-    if (panelSize.value.w > maxW) panelSize.value.w = maxW
-    if (panelSize.value.h > maxH) panelSize.value.h = maxH
+      // 调整面板大小以适应容器尺寸
+  const maxW = Math.min(400, b.width * 0.9)
+  const maxH = Math.min(b.height * 0.8, b.height - 100)
+  if (panelSize.value.w > maxW) panelSize.value.w = maxW
+  if (panelSize.value.h > maxH) panelSize.value.h = maxH
     
     // 重新计算面板位置，但不改变FAB按钮位置
     placePanel()
     
     // 保存调整后的位置到localStorage
-    localStorage.setItem('aiAssistantPos', JSON.stringify(pos.value))
+    localStorage.setItem('aiAssistantPos_StudentSide', JSON.stringify(pos.value))
   })
 })
 
@@ -738,8 +803,6 @@ function placePanel(){
   from { opacity: 0; transform: translateY(-10px); }
   to { opacity: 1; transform: translateY(0); }
 }
-
-
 
 /* Loading 动画（圆形旋转） */
 .loading-spinner { display: inline-block; width: 14px; height: 14px; margin-left: 8px; border-radius: 50%; border: 2px solid rgba(6,95,70,.22); border-top-color: rgba(16,185,129,.9); animation: spin 0.8s linear infinite; vertical-align: -2px; }
