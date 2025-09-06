@@ -92,7 +92,7 @@ const segments = computed(()=>{
 const mapWidth = computed(()=>{ const last = posOf(20); return last.x + 220 })
 const svgViewBox = computed(()=>`0 0 ${mapWidth.value} ${mapHeight.value}`)
 
-const completed = new Set(Array.from({length:18}, (_,i)=>i+1))
+const completed = new Set((() => { const arr = Array.from({length:18}, (_,i)=>i+1); try { const forceReset = localStorage.getItem('force-level5-19-reset') === '1'; if (!forceReset && localStorage.getItem('level5-19-complete') === '1') arr.push(19); if (localStorage.getItem('level5-20-complete') === '1') arr.push(20) } catch(e) { /* ignore */ } return arr })())
 
 function nodeClass(n){
   return { done: completed.has(n), boss: n===20, hover: hover.value===n }
@@ -139,8 +139,8 @@ function onNodeClick(n){
     showModal.value = true
     return
   }
-  if (n===19){ router.push('/StudentSide/levelt/level5-19'); return }
-  if (n===20){ router.push('/StudentSide/levelt/level5-20') }
+  if (n===19){ if (completed.has(19)) { modalText.value = `关卡5-19 已完成，请继续下一关！`; showModal.value = true; return } router.push('/StudentSide/levelt/level5-19'); return }
+  if (n===20){ if (completed.has(20)) { modalText.value = `关卡5-20 已完成，恭喜通关！`; showModal.value = true; return } router.push('/StudentSide/levelt/level5-20') }
 }
 
 function goLibrary(){ router.push('/StudentSide/levelt/library') }
