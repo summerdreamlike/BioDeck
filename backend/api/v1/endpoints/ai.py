@@ -19,9 +19,11 @@ def ai_ask():
         history = ai_service.get_history(session_id)
         # 优先走真实模型适配器
         if adapter.ready:
-            answer = adapter.ask(question, history)
+            base_answer = adapter.ask(question, history)
         else:
-            answer = ai_service.answer(question, history)
+            base_answer = ai_service.answer(question, history)
+        # 生成结构化答案（预习/学习/复习 + Mermaid）
+        answer = ai_service.generate_structured_answer(question, base_answer)
         ai_service.add_message(session_id, 'user', question)
         ai_service.add_message(session_id, 'assistant', answer)
         return jsonify({'answer': answer})
@@ -58,12 +60,17 @@ def ai_upload_image():
         return jsonify({'error': '未上传图片'}), 400
     image = request.files['image']
     question = request.form.get('question', '请解答这个生物学问题')
+    session_id = request.form.get('session_id', 'default')
     # 保存到临时文件
     with tempfile.NamedTemporaryFile(delete=False) as tf:
         image.save(tf.name)
         tmp_path = tf.name
     try:
-        answer = adapter.process_image(tmp_path, question)
+        base_answer = adapter.process_image(tmp_path, question)
+        answer = ai_service.generate_structured_answer(question, base_answer)
+        # 记录到会话历史
+        ai_service.add_message(session_id, 'user', f'图片问答：{question}')
+        ai_service.add_message(session_id, 'assistant', answer)
         return jsonify({'answer': answer})
     finally:
         try:

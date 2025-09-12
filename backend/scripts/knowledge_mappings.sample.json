@@ -1,0 +1,13 @@
+{
+  "level_to_knowledge": [
+    { "level_name": "有丝分裂", "knowledge_point": "细胞分裂基础" },
+    { "level_name": "有丝分裂", "knowledge_point": "染色体行为" },
+    { "level_name": "减数分裂", "knowledge_point": "减数分裂过程" }
+  ],
+  "knowledge_to_cards": [
+    { "knowledge_point": "细胞分裂基础", "card_id": "B001", "relevance": 1.0 },
+    { "knowledge_point": "细胞分裂基础", "card_id": "A001", "relevance": 1.2 },
+    { "knowledge_point": "染色体行为", "card_id": "R003", "relevance": 1.5 },
+    { "knowledge_point": "减数分裂过程", "card_id": "SR010", "relevance": 2.0 }
+  ]
+} 

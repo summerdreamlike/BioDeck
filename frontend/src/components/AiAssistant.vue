@@ -261,6 +261,15 @@ function scrollToBottom(){
 function formatAnswer(raw){
   if (!raw) return ''
   let text = String(raw).trim()
+
+  // 提前提取 mermaid 代码块，避免后续处理破坏内容
+  const mermaidBlocks = []
+  text = text.replace(/```mermaid\n([\s\S]*?)```/g, (m, p1) => {
+    const token = `__MERMAID_BLOCK_${mermaidBlocks.length}__`
+    mermaidBlocks.push(String(p1).trim())
+    return token
+  })
+
   // 规范换行与空白
   text = text.replace(/\r\n?|\n/g, '\n').replace(/\n{3,}/g, '\n\n')
   // 清理 markdown 列表/多余符号：*, -, + 开头的项目；多余星号
@@ -286,6 +295,14 @@ function formatAnswer(raw){
       text = parts.map((s, i) => `${i+1}. ${s}`).join('\n')
     }
   }
+
+  // 还原 mermaid 代码块为可渲染容器
+  text = text.replace(/__MERMAID_BLOCK_(\d+)__/g, (m, idx) => {
+    const i = Number(idx)
+    const code = mermaidBlocks[i] || ''
+    return `<div class="mermaid">${code}</div>`
+  })
+
   // 返回 HTML 字符串
   return text
 }
@@ -337,6 +354,35 @@ function highlightQuestions(html){
     }
   }
   return parts.join('')
+}
+
+// 动态加载与渲染 Mermaid
+let mermaidLoadingPromise = null
+function ensureMermaid(){
+  if (window.mermaid) return Promise.resolve(window.mermaid)
+  if (mermaidLoadingPromise) return mermaidLoadingPromise
+  mermaidLoadingPromise = new Promise((resolve, reject) => {
+    const script = document.createElement('script')
+    script.src = 'https://unpkg.com/mermaid@10/dist/mermaid.min.js'
+    script.async = true
+    script.onload = () => {
+      try { window.mermaid.initialize({ startOnLoad: false, securityLevel: 'loose' }) } catch (e) {}
+      resolve(window.mermaid)
+    }
+    script.onerror = reject
+    document.head.appendChild(script)
+  })
+  return mermaidLoadingPromise
+}
+
+function renderMermaidIn(container){
+  const root = container || scrollRef.value
+  if (!root) return
+  const hasBlock = root.querySelector('div.mermaid')
+  if (!hasBlock) return
+  ensureMermaid().then((mermaid) => {
+    try { mermaid.run({ querySelector: 'div.mermaid' }) } catch (e) {}
+  }).catch(() => {})
 }
 
 function typeOut(targetIndex, fullText){
@@ -411,7 +457,7 @@ function removeImage() {
 }
 
 async function uploadImage(imageFile, questionText) {
-  loading.value = true
+  
   // 生成一份图片预览URL（若已存在则复用）
   const previewUrl = uploadedImage.value?.preview || URL.createObjectURL(imageFile)
   messages.value.push({ role: 'user', content: questionText || '', imageUrl: previewUrl, imageAlt: imageFile.name })
@@ -436,11 +482,17 @@ async function uploadImage(imageFile, questionText) {
     const data = await res.json()
     const answer = data.answer || '抱歉，无法分析这张图片。'
     const formatted = formatAnswer(answer)
+    const hasMermaid = /```mermaid/.test(answer) || /<div class="mermaid">/.test(formatted)
     messages.value[pendingIdx].loading = false
     messages.value[pendingIdx].content = ''
     // 标记为 HTML 以启用富文本渲染
     messages.value[pendingIdx].isHtml = true
-    typeOut(pendingIdx, formatted)
+    if (hasMermaid) {
+      messages.value[pendingIdx].content = formatted
+      await nextTick(); renderMermaidIn(); scrollToBottom()
+    } else {
+      typeOut(pendingIdx, formatted)
+    }
   } catch (e) {
     console.error('Upload error:', e)
     const fallback = `图片分析服务暂不可用，请稍后再试。错误信息：${e.message}`
@@ -484,10 +536,16 @@ async function sendText(question) {
     const data = await res.json()
     const answer = data.answer || '抱歉，暂时无法回答。'
     const formatted = formatAnswer(answer)
+    const hasMermaid = /```mermaid/.test(answer) || /<div class="mermaid">/.test(formatted)
     messages.value[pendingIdx].loading = false
     messages.value[pendingIdx].content = ''
     messages.value[pendingIdx].isHtml = true
-    typeOut(pendingIdx, formatted)
+    if (hasMermaid) {
+      messages.value[pendingIdx].content = formatted
+      await nextTick(); renderMermaidIn(); scrollToBottom()
+    } else {
+      typeOut(pendingIdx, formatted)
+    }
   } catch (e) {
     const fallback = '服务暂不可用，已切换到示例回答：\n1. 细胞膜的主要成分是磷脂双分子层与蛋白质。\n2. 膜蛋白包括外周蛋白与整合蛋白，承担物质转运与信号传导。'
     messages.value[pendingIdx].loading = false

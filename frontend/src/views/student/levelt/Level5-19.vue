@@ -2,14 +2,23 @@
   <div class="lv519" :style="{ backgroundImage: `url('${bgUrl}')` }">
     <div class="overlay">
       <h1 class="title">第19关 · 光能选择</h1>
-      <p class="rule goal" data-text="目标：结算时手牌同时拥有『CO₂』『H₂O』，且获得『ATP』。">目标：结算时手牌同时拥有『CO₂』『H₂O』，且获得『ATP』。</p>
+      <p class="rule goal" data-text="目标：结算时手牌同时拥有『CO₂』『H₂O』，且获得『ATP』。"></p>
       <div class="zones">
-                  <div class="play-zone cards" :class="{ droppable: dragging }" @dragover.prevent @drop="dropToPlay">
-            <div v-for="(c,i) in board" :key="'p-'+c+'-'+i" class="card small" draggable="true" @dragstart="onDragStartFromBoard(c,i)" @dragend="onDragEnd" @dblclick="returnToHand(i)">
-              <InteractiveCard :image-src="srcOf(c)" :size-mode="'fixed'" :width="'160px'" :aspect-ratio="'3/5'" :enable-hover-effect="true" :enable-animation="false" :enable-silver-outline="false" :enable-gif="false" :enable-laser="false" :enable-diagonal-light="false" />
-              <span class="label">{{ c }}</span>
-            </div>
+        <div class="play-zone cards" :class="{ droppable: dragging }" @dragover.prevent @drop="dropToPlay">
+          <div 
+            v-for="(c,i) in board" 
+            :key="'p-'+c+'-'+i" 
+            class="card small" 
+            :class="{ 'card-entering': cardAnimations.board[i] }"
+            draggable="true" 
+            @dragstart="onDragStartFromBoard(c,i)" 
+            @dragend="onDragEnd" 
+            @dblclick="returnToHand(i)"
+          >
+            <InteractiveCard :image-src="srcOf(c)" :size-mode="'fixed'" :width="'160px'" :aspect-ratio="'3/5'" :enable-hover-effect="true" :enable-animation="false" :enable-silver-outline="false" :enable-gif="false" :enable-laser="false" :enable-diagonal-light="false" />
+            <span class="label">{{ c }}</span>
           </div>
+        </div>
       </div>
 
       <div class="actions top-actions">
@@ -19,36 +28,50 @@
 
       <div class="hand">
         <div class="hand-title"> </div>
-                  <div class="cards" @dragover.prevent @drop="onDropToHand">
-            <div v-for="(c,i) in hand" :key="c+'-'+i" class="card" :style="arcStyle(i, hand.length)" draggable="true" @dragstart="onDragStart(c,i)" @dragend="onDragEnd" @click="play(c,i)">
-              <InteractiveCard :image-src="srcOf(c)" :size-mode="'fixed'" :width="'160px'" :aspect-ratio="'3/5'" :enable-hover-effect="true" :enable-animation="false" :enable-silver-outline="false" :enable-gif="false" :enable-laser="false" :enable-diagonal-light="false" />
-              <span class="label">{{ c }}</span>
-            </div>
+        <div class="cards" @dragover.prevent @drop="onDropToHand">
+          <div 
+            v-for="(c,i) in hand" 
+            :key="c+'-'+i" 
+            class="card" 
+            :class="{ 'card-entering': cardAnimations.hand[i] }"
+            :style="arcStyle(i, hand.length)" 
+            draggable="true" 
+            @dragstart="onDragStart(c,i)" 
+            @dragend="onDragEnd" 
+            @click="play(c,i)"
+          >
+            <InteractiveCard :image-src="srcOf(c)" :size-mode="'fixed'" :width="'160px'" :aspect-ratio="'3/5'" :enable-hover-effect="true" :enable-animation="false" :enable-silver-outline="false" :enable-gif="false" :enable-laser="false" :enable-diagonal-light="false" />
+            <span class="label">{{ c }}</span>
           </div>
+        </div>
       </div>
     </div>
 
     <!-- 选牌弹窗 -->
     <teleport to="body">
       <div v-if="picker.show" class="picker-drawer" @click.self="picker.show=false">
-              <div class="picker-panel" style="width:420px">
+        <div class="picker-panel" style="width:420px">
           <button class="picker-x" @click="picker.show=false">×</button>
           <div class="picker-title">从牌库选择 1 张卡加入手牌</div>
-        <div class="picker-grid two">
-          <div v-for="it in picker.items.filter(x=>!x.stolen)" :key="it.name" class="picker-item" @click="chooseCard(it)">
-            <InteractiveCard :image-src="it.url" :size-mode="'fixed'" :width="'160px'" :aspect-ratio="'3/5'" :enable-hover-effect="true" :enable-animation="false" :enable-silver-outline="false" :enable-gif="false" :enable-laser="false" :enable-diagonal-light="false" />
-            <div class="nm">{{ it.name }}</div>
+          <div class="picker-grid two">
+            <div 
+              v-for="(it, index) in picker.items.filter(x=>!x.stolen)" 
+              :key="it.name" 
+              class="picker-item" 
+              @click="chooseCard(it)"
+            >
+              <InteractiveCard :image-src="it.url" :size-mode="'fixed'" :width="'160px'" :aspect-ratio="'3/5'" :enable-hover-effect="true" :enable-animation="false" :enable-silver-outline="false" :enable-gif="false" :enable-laser="false" :enable-diagonal-light="false" />
+              <div class="nm">{{ it.name }}</div>
+            </div>
           </div>
-        </div>
-          <button class="picker-close" @click="picker.show=false">关闭</button>
         </div>
       </div>
     </teleport>
 
     <div v-if="boss.show" class="boss" :style="{ backgroundImage:`url('${bossUrl}')` }">
       <div class="boss-say">这张牌就归我啦！</div>
-  <img v-if="bossCarry && bossCarryUrl" class="boss-carry" :src="bossCarryUrl" alt="ATP" />
-</div>
+      <img v-if="bossCarry && bossCarryUrl" class="boss-carry" :src="bossCarryUrl" alt="ATP" />
+    </div>
 
     <div v-if="win" class="win">
       <div class="box">
@@ -57,11 +80,26 @@
         <button class="btn" @click="toBoss">进入20关</button>
       </div>
     </div>
+
+    <!-- 合成动画效果 -->
+    <div v-if="synthesisAnimation.show" class="synthesis-effect">
+      <div class="synthesis-text">{{ synthesisAnimation.text }}</div>
+      <div class="synthesis-cards">
+        <div 
+          v-for="(card, index) in synthesisAnimation.cards" 
+          :key="'syn-' + card + '-' + index"
+          class="synthesis-card"
+          :style="{ animationDelay: index * 0.2 + 's' }"
+        >
+          <InteractiveCard :image-src="srcOf(card)" :size-mode="'fixed'" :width="'120px'" :aspect-ratio="'3/5'" :enable-hover-effect="false" :enable-animation="false" :enable-silver-outline="false" :enable-gif="false" :enable-laser="false" :enable-diagonal-light="false" />
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import InteractiveCard from '@/components/InteractiveCard.vue'
 
@@ -75,6 +113,20 @@ const win = ref(false)
 // 拖拽状态
 const dragging = ref(false)
 let dragItem = { name: '', index: -1 }
+
+// 动画状态
+const cardAnimations = ref({
+  hand: [],
+  board: []
+})
+const synthesisAnimation = ref({
+  show: false,
+  text: '',
+  cards: []
+})
+
+// 待添加的卡牌（合成动画期间暂存）
+const pendingCards = ref([])
 
 const bgUrl = ref('')
 const bossUrl = ref('')
@@ -113,18 +165,72 @@ function srcOf(name){
   return typeof url === 'string' ? url : String(url)
 }
 
+// 发牌动画
+function triggerDealAnimation(cards, target) {
+  cards.forEach((card, index) => {
+    setTimeout(() => {
+      if (target === 'hand') {
+        cardAnimations.value.hand[hand.value.indexOf(card)] = true
+      } else if (target === 'board') {
+        cardAnimations.value.board[board.value.indexOf(card)] = true
+      }
+      
+      // 动画结束后清除状态
+      setTimeout(() => {
+        if (target === 'hand') {
+          const cardIndex = hand.value.indexOf(card)
+          if (cardIndex >= 0) {
+            cardAnimations.value.hand[cardIndex] = false
+          }
+        } else if (target === 'board') {
+          const cardIndex = board.value.indexOf(card)
+          if (cardIndex >= 0) {
+            cardAnimations.value.board[cardIndex] = false
+          }
+        }
+      }, 600)
+    }, index * 150)
+  })
+}
+
+// 合成动画 - 修改为异步，等待动画完成后再触发发牌
+function triggerSynthesisAnimation(text, cards) {
+  return new Promise((resolve) => {
+    synthesisAnimation.value = {
+      show: true,
+      text: text,
+      cards: cards
+    }
+    
+    // 等待合成动画完成（3秒）
+    setTimeout(() => {
+      synthesisAnimation.value.show = false
+      resolve()
+    }, 2000)
+  })
+}
+
 onMounted(()=>{
   // background（取消回退，仅使用 game-background.png）
   try { const b = require('@/assets/img/game/game-background.png'); bgUrl.value = (b.default||b) } catch { bgUrl.value = '' }
   // 初始化手牌
   hand.value = ['CO₂','H₂O']
   // 清除19关完成标记
-  try { localStorage.removeItem('level5-19-complete'); localStorage.setItem('force-level5-19-reset','1') } catch(e){}
+  try { 
+    localStorage.removeItem('level5-19-complete')
+    localStorage.setItem('force-level5-19-reset','1') 
+  } catch(e){
+    console.warn('LocalStorage operation failed:', e)
+  }
   // boss image
-    try { const x = require('@/assets/img/game/boss.png'); bossUrl.value = (x.default||x) } catch {
-     bossUrl.value = 'data:image/svg+xml;utf8,%3Csvg xmlns%3D%22http%3A//www.w3.org/2000/svg%22 width%3D%22120%22 height%3D%22120%22%3E%3Ccircle cx%3D%2260%22 cy%3D%2260%22 r%3D%2250%22 fill%3D%22%237b1fa2%22/%3E%3C/svg%3E'
-   }
-   try { const c = require('@/assets/img/all-decks/ATP.png'); bossCarryUrl.value = (c.default||c) } catch(e){ bossCarryUrl.value = '' }
+  try { const x = require('@/assets/img/game/boss.png'); bossUrl.value = (x.default||x) } catch {
+    bossUrl.value = 'data:image/svg+xml;utf8,%3Csvg xmlns%3D%22http%3A//www.w3.org/2000/svg%22 width%3D%22120%22 height%3D%22120%22%3E%3Ccircle cx%3D%2260%22 cy%3D%2260%22 r%3D%2250%22 fill%3D%22%237b1fa2%22/%3E%3C/svg%3E'
+  }
+  try { const c = require('@/assets/img/game/ATP.png'); bossCarryUrl.value = (c.default||c) } catch(e){ bossCarryUrl.value = '' }
+  
+  // 初始化动画状态
+  cardAnimations.value.hand = new Array(hand.value.length).fill(false)
+  cardAnimations.value.board = new Array(board.value.length).fill(false)
 })
 
 const boss = ref({ show:false })
@@ -157,7 +263,6 @@ function openPicker(){
   // 截断为 8 张
   picker.value.items = pool.slice(0,8)
   picker.value.show = true
-  // 不自动偷走；等待用户点击 ATP 时再触发 BOSS 叼走
 }
 
 function chooseCard(item){
@@ -172,6 +277,12 @@ function chooseCard(item){
     return
   }
   hand.value.push(item.name)
+  
+  // 触发发牌动画
+  nextTick(() => {
+    triggerDealAnimation([item.name], 'hand')
+  })
+  
   picker.value.show = false
   searched.value = true
 }
@@ -179,6 +290,12 @@ function chooseCard(item){
 function play(card, index){
   hand.value.splice(index,1)
   board.value.push(card)
+  
+  // 触发发牌动画
+  nextTick(() => {
+    triggerDealAnimation([card], 'board')
+  })
+  
   resolveBoard()
 }
 
@@ -200,6 +317,12 @@ function dropToPlay(){
   if (index < 0 || from !== 'hand') return
   hand.value.splice(index,1)
   board.value.push(name)
+  
+  // 触发发牌动画
+  nextTick(() => {
+    triggerDealAnimation([name], 'board')
+  })
+  
   onDragEnd()
   resolveBoard()
 }
@@ -209,19 +332,51 @@ function onDropToHand(){
   if (index < 0 || from !== 'board') return
   board.value.splice(index,1)
   hand.value.push(name)
+  
+  // 触发发牌动画
+  nextTick(() => {
+    triggerDealAnimation([name], 'hand')
+  })
+  
   onDragEnd()
 }
 
-function resolveBoard(){
+// 修改 resolveBoard 为异步函数，等待合成动画完成
+async function resolveBoard(){
   const have = new Set(board.value)
   if (have.has('光能') && have.has('CO₂') && have.has('H₂O')){
     board.value = []
-    hand.value.push('葡萄糖','O₂')
+    // 暂存待添加的卡牌，不立即添加到手牌
+    pendingCards.value = ['葡萄糖','O₂']
+    
+    // 先显示合成动画，等待完成后再添加卡牌并显示发牌动画
+    await triggerSynthesisAnimation('光合作用！获得葡萄糖和氧气', ['葡萄糖', 'O₂'])
+    
+    // 合成动画完成后，添加卡牌到手牌并触发发牌动画
+    hand.value.push(...pendingCards.value)
+    pendingCards.value = []
+    
+    nextTick(() => {
+      triggerDealAnimation(['葡萄糖', 'O₂'], 'hand')
+    })
     return
   }
   if (have.has('葡萄糖') && have.has('O₂')){
     board.value = []
-    hand.value.push('ATP','CO₂','H₂O')
+    // 暂存待添加的卡牌，不立即添加到手牌
+    pendingCards.value = ['ATP','CO₂','H₂O']
+    
+    // 先显示合成动画，等待完成后再添加卡牌并显示发牌动画
+    await triggerSynthesisAnimation('细胞呼吸！获得ATP', ['ATP', 'CO₂', 'H₂O'])
+    
+    // 合成动画完成后，添加卡牌到手牌并触发发牌动画
+    hand.value.push(...pendingCards.value)
+    pendingCards.value = []
+    
+    nextTick(() => {
+      triggerDealAnimation(['ATP', 'CO₂', 'H₂O'], 'hand')
+    })
+    
     checkWin()
   }
 }
@@ -255,6 +410,12 @@ function reset(){
   win.value = false
   picker.value = { show:false, items:[] }
   boss.value.show = false
+  pendingCards.value = []
+  
+  // 重置动画状态
+  cardAnimations.value.hand = new Array(hand.value.length).fill(false)
+  cardAnimations.value.board = new Array(board.value.length).fill(false)
+  synthesisAnimation.value.show = false
 }
 
 function triggerBoss(){
@@ -296,7 +457,7 @@ function triggerBoss(){
   max-width: 1280px;
   margin: -120px auto -40px;
 }
-.play-zone{ position: relative; bottom: 40%;min-height: 360px; min-width: 960px; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; padding: 20px; border-radius: 16px; background: transparent; box-shadow: none; }
+.play-zone{ position: relative; bottom: 30%;min-height: 360px; min-width: 960px; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; padding: 20px; border-radius: 16px; background: transparent; box-shadow: none; }
 .cards{ display: flex; gap: 100px; flex-wrap: wrap; align-items: center; min-height: 122px; padding: 16px; border-radius: 12px; transition: box-shadow .18s ease, background-color .18s ease; }
 .cards.droppable{ background: rgba(34,197,94,.08); box-shadow: inset 0 0 0 2px rgba(34,197,94,.35); }
 
@@ -313,6 +474,87 @@ function triggerBoss(){
 .card.small{ width: 92px; cursor: default; }
 .card img{ width: auto; height: auto; max-width: 180px; max-height: 140px; object-fit: contain; background: transparent; border-radius: 10px; box-shadow: 0 8px 18px rgba(0,0,0,.16); }
 .card .label{ font-size: 20px; font-weight: 800; color:#0f172a; text-shadow: 0 1px 0 rgba(255,255,255,.6); }
+
+/* 发牌动画 */
+.card-entering {
+  animation: dealCard 0.3s ease-out forwards;
+}
+
+@keyframes dealCard {
+  0% {
+    opacity: 0;
+    transform: translateY(-50px) scale(0.8) rotate(-10deg);
+  }
+  50% {
+    opacity: 0.8;
+    transform: translateY(-20px) scale(0.9) rotate(-5deg);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1) rotate(0deg);
+  }
+}
+
+/* 合成动画效果 */
+.synthesis-effect {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 50;
+  pointer-events: none;
+}
+
+.synthesis-text {
+  font-size: 24px;
+  font-weight: 900;
+  color: #10b981;
+  text-align: center;
+  margin-bottom: 20px;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  animation: synthesisTextPulse 0.8s ease-out;
+}
+
+.synthesis-cards {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  align-items: center;
+}
+
+.synthesis-card {
+  animation: synthesisCardFloat 1.5s ease-out forwards;
+}
+
+@keyframes synthesisTextPulse {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes synthesisCardFloat {
+  0% {
+    opacity: 0;
+    transform: translateY(30px) scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-10px) scale(1.1);
+  }
+  100% {
+    opacity: 0.8;
+    transform: translateY(0) scale(1);
+  }
+}
 
 .actions{ display:flex; gap: 10px; }
 .top-actions{ position: fixed; left: 20%; transform: translateX(-50%); bottom: 28%; z-index: 7; }
@@ -336,15 +578,15 @@ function triggerBoss(){
   left: -10px;
   top: -36px;
   background: rgba(146, 21, 255, 0.96);
-  color:#9f0000;
+  color:#ffffff;
   border:2px solid #353535;
   border-radius: 10px;
   padding: 6px 10px;
   font-size: 20px;
-  font-weight: 900;
+  font-weight: 700;
   white-space: nowrap;
   box-shadow: 0 8px 22px rgba(16,185,129,.25);
-  animation: sayFade 1.7s ease-out forwards;
+  animation: sayFade 1.8s ease-out forwards;
 }
 .boss .boss-carry{
   position: absolute; bottom: -54px; left: 56%; transform: translateX(-50%) rotate(8deg) scale(.7);
@@ -358,7 +600,7 @@ function triggerBoss(){
 }
 @keyframes sayFade{
   0%   { opacity: 0; transform: translate(-6px,-6px) scale(.96); }
-  15%  { opacity: 1; }
+  90%  { opacity: 1; }
   100% { opacity: 0; transform: translate(-10px,-10px) scale(1); }
 }
 .win{ position: fixed; inset:0; display:grid; place-items:center; background: rgba(0,0,0,.45); z-index: 20; }
@@ -404,6 +646,27 @@ function triggerBoss(){
   gap: 12px;
 }
 
+/* 牌库卡片项 */
+.picker-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.8);
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.picker-item:hover {
+  background: rgba(16,185,129,0.1);
+  border-color: rgba(16,185,129,0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(16,185,129,0.2);
+}
+
 /* 抽屉内卡片图片：最大 160×120，自适应本身比例 */
 .picker-img{
   width: auto;
@@ -413,5 +676,19 @@ function triggerBoss(){
   object-fit: contain;
   display: block;
   margin: 0 auto;
+}
+
+/* 牌库文字排版到图片正下方 */
+.nm{
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+  text-align: center;
+  margin-top: 4px;
+  text-shadow: 0 1px 2px rgba(255,255,255,0.8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 </style>
